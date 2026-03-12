@@ -25,6 +25,10 @@ export const AuthContextProvider = ({
 
   // Sign Up Function
   const signUpNewUser = async (email: string, password: string) => {
+    if (session) {
+      await signOut(); // If user is already logged into another account, sign them out first.
+    }
+    
     const { data, error } = await supabase.auth.signUp({
       email: email,
       password: password,
