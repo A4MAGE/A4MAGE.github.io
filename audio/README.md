@@ -12,40 +12,40 @@ Implemented by Yazeed & Gladys for Issue #5 — Audio Playback Controls.
 
 ---
 
-## Gladys — What You Need to Do
+## AudioController.js — Gladys
 
-You only need to fill in `AudioController.js`. The engine is already built and ready for you to use.
+`AudioController.js` is the bridge between the platform and the engine. It receives commands from the platform and forwards them to `AudioEngine`.
 
-### How to use the engine
+### AudioEngine API reference
 
 ```js
 const engine = new AudioEngine();
 
-// 1. Load an audio file (you get this from a file input or from the platform)
+// Load an audio file (HTML5 File object from the platform)
 engine.setAudioSource(file);
 
-// 2. Play and pause
+// Playback control
 engine.play();
 engine.pause();
 
-// 3. Read back the current state (useful for updating the UI)
+// Read current playback state
 const state = engine.getPlaybackState();
-// state = { playing: true/false, currentTime: 12.4, duration: 240.0 }
+// returns: { playing: boolean, currentTime: number, duration?: number }
 
-// 4. Force-set the state (useful for syncing with the platform)
+// Force a specific playback state (for platform sync)
 engine.setPlaybackState({ playing: false, currentTime: 0 });
 ```
 
-### What AudioController.js should do
+### Expected interface for AudioController.js
 
-Your controller sits between the platform and the engine. It should:
+The platform will interact with the controller through these methods:
 
-1. Accept a file from the platform and pass it to `engine.setAudioSource(file)`
-2. Expose a `play()` method the platform can call → calls `engine.play()`
-3. Expose a `pause()` method the platform can call → calls `engine.pause()`
-4. Expose a `getState()` method the platform can call → returns `engine.getPlaybackState()`
-
-That's it. Keep it simple — just pass commands through to the engine.
+| Method | What it does |
+|--------|--------------|
+| `loadAudio(file)` | Passes the file to `engine.setAudioSource(file)` |
+| `play()` | Calls `engine.play()` |
+| `pause()` | Calls `engine.pause()` |
+| `getState()` | Returns `engine.getPlaybackState()` |
 
 ---
 
