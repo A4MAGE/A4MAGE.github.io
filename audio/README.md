@@ -71,19 +71,31 @@ That's the whole file. Each method is one line that calls the engine.
 
 ---
 
-### How the website will use your controller
+### How this connects to the React website
 
-Once you're done, the website will use it like this:
+In React, a component (like an audio player page) will import both files and wire them together. Here is what that looks like:
 
-```js
+```jsx
+import AudioEngine from './audio/AudioEngine.js';
+import AudioController from './audio/AudioController.js';
+
+// Create the engine and controller once when the component loads
 const engine = new AudioEngine();
 const controller = new AudioController(engine);
 
-controller.loadAudio(file);   // load a song
-controller.play();             // play it
-controller.pause();            // pause it
-controller.getState();         // check what's happening
+// Then the buttons on the page call the controller directly
+function AudioPlayer() {
+    return (
+        <div>
+            <input type="file" onChange={(e) => controller.loadAudio(e.target.files[0])} />
+            <button onClick={() => controller.play()}>Play</button>
+            <button onClick={() => controller.pause()}>Pause</button>
+        </div>
+    );
+}
 ```
+
+The React component never touches `AudioEngine.js` directly — it only talks to the controller. The controller handles the rest.
 
 ---
 
