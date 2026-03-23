@@ -7,36 +7,83 @@
     <meta charset="UTF-8">
     <title>Audio Controls</title>
     <style>
+        :root {
+            font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+            color-scheme: dark;
+            color: rgba(255, 255, 255, 0.87);
+            background-color: #2b2b2b;
+        }
+
         body {
-            font-family: sans-serif;
-            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            place-items: center;
+            justify-content: center;
         }
 
         #audio-controls {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            max-width: 400px;
+            gap: 1rem;
+            padding: 1rem;
+            background-color: rgb(68, 68, 68);
+            border-radius: 1.5rem;
+            filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
+            min-width: 300px;
         }
 
-        #audio-controls button {
-            padding: 8px 16px;
+        h2 {
+            margin: 0;
+        }
+
+        input[type="file"] {
+            color: rgba(255, 255, 255, 0.87);
+            font-family: inherit;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        button {
+            border-radius: 8px;
+            border: 1px solid transparent;
+            padding: 0.6em 1.2em;
+            font-size: 1em;
+            font-weight: 500;
+            font-family: inherit;
+            color: white;
+            background-color: #2f66b5;
             cursor: pointer;
+            transition: background-color 0.25s;
+            flex: 1;
+        }
+
+        button:hover {
+            background-color: #28518a;
+        }
+
+        button:disabled {
+            background-color: #444;
+            cursor: not-allowed;
         }
 
         #playback-status {
             font-size: 0.9em;
-            color: #555;
+            color: rgba(255, 255, 255, 0.6);
         }
     </style>
 </head>
 <body>
 
 <div id="audio-controls">
-    <label for="audio-file">Load Audio File:</label>
+    <h2>Audio Controls</h2>
+
     <input type="file" id="audio-file" accept="audio/*">
 
-    <div>
+    <div class="button-row">
         <button id="play-btn" disabled>Play</button>
         <button id="pause-btn" disabled>Pause</button>
     </div>
@@ -70,7 +117,6 @@
         engine.pause();
     });
 
-    // Update status display every second
     setInterval(() => {
         const state = engine.getPlaybackState();
         if (!state.duration) return;
