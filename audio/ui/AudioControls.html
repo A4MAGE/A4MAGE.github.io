@@ -1,3 +1,85 @@
 <!-- AudioControls.html - Yazeed & Gladys -->
 <!-- Responsible for: play/pause UI controls, displays playback state -->
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Controls</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        #audio-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+
+        #audio-controls button {
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+
+        #playback-status {
+            font-size: 0.9em;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div id="audio-controls">
+    <label for="audio-file">Load Audio File:</label>
+    <input type="file" id="audio-file" accept="audio/*">
+
+    <div>
+        <button id="play-btn" disabled>Play</button>
+        <button id="pause-btn" disabled>Pause</button>
+    </div>
+
+    <div id="playback-status">No file loaded.</div>
+</div>
+
+<script src="../AudioEngine.js"></script>
+<script>
+    const engine = new AudioEngine();
+
+    const fileInput = document.getElementById('audio-file');
+    const playBtn = document.getElementById('play-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const statusDiv = document.getElementById('playback-status');
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        engine.setAudioSource(file, { title: file.name });
+        playBtn.disabled = false;
+        pauseBtn.disabled = false;
+        statusDiv.textContent = 'Loaded: ' + file.name;
+    });
+
+    playBtn.addEventListener('click', () => {
+        engine.play();
+    });
+
+    pauseBtn.addEventListener('click', () => {
+        engine.pause();
+    });
+
+    // Update status display every second
+    setInterval(() => {
+        const state = engine.getPlaybackState();
+        if (!state.duration) return;
+        const current = state.currentTime.toFixed(1);
+        const total = state.duration.toFixed(1);
+        const status = state.playing ? 'Playing' : 'Paused';
+        statusDiv.textContent = status + ' — ' + current + 's / ' + total + 's';
+    }, 1000);
+</script>
+
+</body>
+</html>
