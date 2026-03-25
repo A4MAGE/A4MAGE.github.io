@@ -174,4 +174,17 @@ class AudioEngine {
     getMediaElement() {
         return this._audio;
     }
+
+    // Returns the Web Audio API AudioContext, or null if not yet connected.
+    // Use this to share the context with external visualizers (e.g. audioMotion-analyzer).
+    getAudioContext() {
+        return this._audioCtx;
+    }
+
+    // Returns the MediaElementSourceNode, or null if not yet connected.
+    // Pass this into audioMotion.connectInput() so it shares the engine's audio graph
+    // instead of trying to create a second (invalid) connection to the same element.
+    getSourceNode() {
+        return this._source;
+    }
 }

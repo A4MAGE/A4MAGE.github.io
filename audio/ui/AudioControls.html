@@ -355,11 +355,18 @@
 
     function initAudioMotion() {
         if (audioMotion) return;
+        // The browser only allows one MediaElementSource per audio element.
+        // AudioEngine already owns that connection, so we pass its AudioContext
+        // and connect audioMotion to the existing source node instead.
+        const ctx    = engine.getAudioContext();
+        const source = engine.getSourceNode();
+        if (!ctx || !source) return;
         try {
             audioMotion = new AudioMotionAnalyzer(
                 document.getElementById('spectrum-container'),
                 {
-                    source: engine.getMediaElement(),
+                    audioCtx: ctx,
+                    connectSpeakers: false,
                     height: 120,
                     mode: 2,
                     gradient: 'prism',
@@ -372,8 +379,9 @@
                     reflexFit: true,
                 }
             );
+            audioMotion.connectInput(source);
         } catch(e) {
-            // audioMotion may fail before user gesture — retry on play
+            console.error('audioMotion init failed:', e);
         }
     }
 
