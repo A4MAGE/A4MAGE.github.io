@@ -60,6 +60,48 @@ class AudioController {
         // returns: { playing: true/false, currentTime: 12.4, duration: 240.0 }
     }
 
+    // Load a preset JSON object and extract its audio-processing parameters.
+    // Does NOT load an audio file — call loadAudio(file) separately.
+    //
+    // The preset drives how the audio signal shapes the visuals:
+    //   minimizing_factor  — scales the raw bass/mid signal down
+    //   power_factor       — applies a power curve (higher = more dramatic peaks)
+    //   base_speed         — animation floor speed when audio is quiet
+    //   easing_speed       — how smoothly the visual reacts to audio changes
+    //   volume_multiplier  — master gate (0 = audio doesn't drive visuals)
+    //
+    // Returns the extracted audio params so the caller (e.g. MAGE renderer) can apply them.
+    // Throws if the preset is missing required fields.
+    //
+    // Example:
+    //   const params = controller.loadPreset(presetJSON);
+    //   // params: { minimizing_factor, power_factor, base_speed, easing_speed, volume_multiplier }
+    loadPreset(preset) {
+        if (!preset || typeof preset !== 'object') {
+            throw new Error('loadPreset: preset must be a JSON object');
+        }
+        if (!preset.intent) {
+            throw new Error('loadPreset: preset is missing required "intent" block');
+        }
+
+        const intent = preset.intent;
+        const state  = preset.state || {};
+
+        const audioParams = {
+            minimizing_factor: intent.minimizing_factor,
+            power_factor:      intent.power_factor,
+            base_speed:        intent.base_speed,
+            easing_speed:      intent.easing_speed,
+            time_multiplier:   intent.time_multiplier  ?? 1,
+            volume_multiplier: state.volume_multiplier ?? 0,
+        };
+
+        // Store alongside any existing audio metadata so the renderer can read them back
+        this.engine.attachMetadata({ preset: audioParams });
+
+        return audioParams;
+    }
+
     // Returns a single snapshot of analysis data.
     // { frequencyData: Uint8Array, timeDomainData: Uint8Array, bufferLength: number }
     getAnalysis() {
