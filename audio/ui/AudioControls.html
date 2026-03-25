@@ -6,7 +6,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Audio Controls</title>
-    <!-- WaveSurfer.js: interactive waveform display with click-to-seek -->
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <style>
         :root {
@@ -46,6 +45,43 @@
             letter-spacing: 0.1em;
         }
 
+        /* ── Now Playing ── */
+        #now-playing {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-height: 2rem;
+        }
+
+        #now-playing-text {
+            flex: 1;
+            font-size: 0.85em;
+            color: rgba(255,255,255,0.7);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #now-playing-text span.dim {
+            color: rgba(255,255,255,0.35);
+        }
+
+        /* BPM beat dot — pulses on every beat */
+        #beat-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #2f66b5;
+            flex-shrink: 0;
+            opacity: 0.2;
+            transition: opacity 0.05s, transform 0.05s;
+        }
+
+        #beat-dot.pulse {
+            opacity: 1;
+            transform: scale(1.4);
+        }
+
         /* ── Waveform ── */
         #waveform-container {
             border-radius: 0.75rem;
@@ -53,7 +89,7 @@
             background: #1a1a1a;
         }
 
-        /* ── Spectrum analyzer ── */
+        /* ── Spectrum ── */
         #spectrum-canvas {
             display: block;
             width: 100%;
@@ -98,15 +134,10 @@
             transition: background 0.2s;
         }
 
-        #seek-bar::-webkit-slider-thumb:hover {
-            background: #5b9bd5;
-        }
+        #seek-bar::-webkit-slider-thumb:hover { background: #5b9bd5; }
 
         /* ── Buttons ── */
-        .button-row {
-            display: flex;
-            gap: 0.5rem;
-        }
+        .button-row { display: flex; gap: 0.5rem; }
 
         button {
             border-radius: 8px;
@@ -122,9 +153,7 @@
             flex: 1;
         }
 
-        button:hover {
-            background-color: #28518a;
-        }
+        button:hover { background-color: #28518a; }
 
         button:disabled {
             background-color: #3a3a3a;
@@ -132,13 +161,11 @@
             cursor: not-allowed;
         }
 
-        /* ── File input ── */
         input[type="file"] {
             color: rgba(255, 255, 255, 0.87);
             font-family: inherit;
         }
 
-        /* ── Status ── */
         #playback-status {
             font-size: 0.85em;
             color: rgba(255, 255, 255, 0.5);
@@ -159,11 +186,7 @@
             gap: 0.5rem;
         }
 
-        .meta-field {
-            display: flex;
-            flex-direction: column;
-            gap: 0.2rem;
-        }
+        .meta-field { display: flex; flex-direction: column; gap: 0.2rem; }
 
         .meta-field label {
             font-size: 0.7rem;
@@ -184,9 +207,7 @@
             transition: border-color 0.2s;
         }
 
-        .meta-field input:focus {
-            border-color: #2f66b5;
-        }
+        .meta-field input:focus { border-color: #2f66b5; }
 
         #save-meta-btn {
             background: #444;
@@ -195,16 +216,16 @@
             font-size: 0.85em;
         }
 
-        #save-meta-btn:hover {
-            background: #555;
+        #save-meta-btn:hover { background: #555; }
+
+        #meta-display {
+            font-size: 0.8em;
+            color: rgba(255,255,255,0.45);
+            font-style: italic;
         }
 
-        /* ── Timeline sync demo ── */
-        .timeline-row {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
+        /* ── Timeline sync ── */
+        .timeline-row { display: flex; align-items: center; gap: 0.75rem; }
 
         #timeline-input {
             background: #1a1a1a;
@@ -218,23 +239,9 @@
             outline: none;
         }
 
-        #sync-btn {
-            flex: none;
-            padding: 0.5em 1em;
-            font-size: 0.85em;
-        }
+        #sync-btn { flex: none; padding: 0.5em 1em; font-size: 0.85em; }
 
-        #meta-display {
-            font-size: 0.8em;
-            color: rgba(255,255,255,0.45);
-            font-style: italic;
-        }
-
-        hr {
-            border: none;
-            border-top: 1px solid rgba(255,255,255,0.08);
-            margin: 0;
-        }
+        hr { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 0; }
     </style>
 </head>
 <body>
@@ -243,6 +250,12 @@
     <h2>Audio Controls</h2>
 
     <input type="file" id="audio-file" accept="audio/*">
+
+    <!-- Now Playing strip -->
+    <div id="now-playing">
+        <div id="beat-dot"></div>
+        <div id="now-playing-text"><span class="dim">No file loaded</span></div>
+    </div>
 
     <!-- Waveform -->
     <div id="waveform-container"></div>
@@ -264,7 +277,7 @@
 
     <hr>
 
-    <!-- Spectrum analyzer -->
+    <!-- Spectrum -->
     <div class="section-label">Frequency Spectrum</div>
     <canvas id="spectrum-canvas"></canvas>
 
@@ -283,7 +296,7 @@
         </div>
         <div class="meta-field">
             <label>BPM</label>
-            <input type="number" id="meta-bpm" placeholder="120">
+            <input type="number" id="meta-bpm" placeholder="120" min="1">
         </div>
         <div class="meta-field">
             <label>Key</label>
@@ -295,7 +308,7 @@
         </div>
         <div class="meta-field">
             <label>Offset (s)</label>
-            <input type="number" id="meta-offset" placeholder="0" step="0.1">
+            <input type="number" id="meta-offset" placeholder="0" step="0.1" min="0">
         </div>
     </div>
     <div class="button-row" style="margin-top:0.25rem">
@@ -309,28 +322,29 @@
     <div class="section-label">Performance Timeline Sync</div>
     <div class="timeline-row">
         <input type="number" id="timeline-input" placeholder="sec" step="0.1" min="0">
-        <button id="sync-btn" class="button-row" disabled>Sync to Timeline</button>
+        <button id="sync-btn" disabled>Sync to Timeline</button>
     </div>
 </div>
 
 <script src="../AudioEngine.js"></script>
 <script src="../AudioController.js"></script>
 <script>
-    // ── Setup ──────────────────────────────────────────────────────────────
     const engine     = new AudioEngine();
     const controller = new AudioController(engine);
 
-    const fileInput    = document.getElementById('audio-file');
-    const playBtn      = document.getElementById('play-btn');
-    const pauseBtn     = document.getElementById('pause-btn');
-    const statusDiv    = document.getElementById('playback-status');
-    const seekBar      = document.getElementById('seek-bar');
-    const timeCurrent  = document.getElementById('time-current');
-    const timeTotal    = document.getElementById('time-total');
-    const syncBtn      = document.getElementById('sync-btn');
-    const metaDisplay  = document.getElementById('meta-display');
+    const fileInput       = document.getElementById('audio-file');
+    const playBtn         = document.getElementById('play-btn');
+    const pauseBtn        = document.getElementById('pause-btn');
+    const statusDiv       = document.getElementById('playback-status');
+    const seekBar         = document.getElementById('seek-bar');
+    const timeCurrent     = document.getElementById('time-current');
+    const timeTotal       = document.getElementById('time-total');
+    const syncBtn         = document.getElementById('sync-btn');
+    const metaDisplay     = document.getElementById('meta-display');
+    const nowPlayingText  = document.getElementById('now-playing-text');
+    const beatDot         = document.getElementById('beat-dot');
 
-    // ── WaveSurfer (waveform + click-to-seek) ─────────────────────────────
+    // ── WaveSurfer ────────────────────────────────────────────────────────
     const wavesurfer = WaveSurfer.create({
         container: '#waveform-container',
         waveColor: '#2f66b5',
@@ -339,28 +353,24 @@
         height: 80,
         normalize: true,
         interact: true,
-        media: engine.getMediaElement(),   // share the engine's audio element
+        media: engine.getMediaElement(),
     });
 
     wavesurfer.on('seek', (progress) => {
         const state = controller.getState();
-        if (state.duration) {
-            controller.seek(progress * state.duration);
-        }
+        if (state.duration) controller.seek(progress * state.duration);
     });
 
-    // ── Spectrum canvas renderer ───────────────────────────────────────────
-    // Draws frequency bars directly from the engine's AnalyserNode.
-    // No external library — guaranteed to work with the engine's audio graph.
+    // ── Spectrum canvas ───────────────────────────────────────────────────
     const specCanvas = document.getElementById('spectrum-canvas');
     const specCtx    = specCanvas.getContext('2d');
     let specRunning  = false;
 
     function resizeCanvas() {
-        specCanvas.width  = specCanvas.offsetWidth;
-        specCanvas.height = specCanvas.offsetHeight;
+        specCanvas.width  = specCanvas.offsetWidth  || 600;
+        specCanvas.height = specCanvas.offsetHeight || 120;
     }
-    resizeCanvas();
+    window.addEventListener('load', resizeCanvas);
     window.addEventListener('resize', resizeCanvas);
 
     function drawSpectrum() {
@@ -371,24 +381,19 @@
         const W = specCanvas.width;
         const H = specCanvas.height;
         specCtx.clearRect(0, 0, W, H);
-
         if (!data) return;
 
-        const bins    = data.bufferLength;
-        const barW    = Math.max(2, (W / bins) - 1);
-        const gap     = 1;
+        const bins = data.bufferLength;
+        const barW = Math.max(2, (W / bins) - 1);
 
         for (let i = 0; i < bins; i++) {
-            const ratio  = data.frequencyData[i] / 255;
-            const barH   = ratio * H;
-            const x      = i * (barW + gap);
-
-            // Gradient: deep blue at low amplitude → cyan/white at peak
-            const grad = specCtx.createLinearGradient(0, H, 0, H - barH);
+            const ratio = data.frequencyData[i] / 255;
+            const barH  = ratio * H;
+            const x     = i * (barW + 1);
+            const grad  = specCtx.createLinearGradient(0, H, 0, H - barH);
             grad.addColorStop(0,   '#1a4a8a');
             grad.addColorStop(0.5, '#2f66b5');
             grad.addColorStop(1,   '#7ec8e3');
-
             specCtx.fillStyle = grad;
             specCtx.beginPath();
             specCtx.roundRect(x, H - barH, barW, barH, 2);
@@ -399,13 +404,42 @@
     function startSpectrum() {
         if (specRunning) return;
         specRunning = true;
+        resizeCanvas();
         drawSpectrum();
+    }
+
+    // ── Now Playing strip ─────────────────────────────────────────────────
+    // Reads metadata from the engine and updates the display strip.
+    // Called after every Save and on file load.
+    function updateNowPlaying() {
+        const meta = controller.getMetadata() || {};
+        const parts = [];
+        if (meta.title)  parts.push(`<strong>${meta.title}</strong>`);
+        if (meta.artist) parts.push(meta.artist);
+        if (meta.key)    parts.push(`<span class="dim">${meta.key}</span>`);
+        if (meta.genre)  parts.push(`<span class="dim">${meta.genre}</span>`);
+        if (meta.bpm)    parts.push(`<span class="dim">${meta.bpm} BPM</span>`);
+        nowPlayingText.innerHTML = parts.length
+            ? parts.join(' <span class="dim">·</span> ')
+            : '<span class="dim">No metadata</span>';
+    }
+
+    // ── BPM beat dot ──────────────────────────────────────────────────────
+    // Pulses visually on every beat fired by the engine.
+    let stopBeat = null;
+
+    function startBeatListener() {
+        if (stopBeat) stopBeat();
+        stopBeat = controller.onBeat(() => {
+            beatDot.classList.add('pulse');
+            setTimeout(() => beatDot.classList.remove('pulse'), 80);
+        });
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
     function formatTime(s) {
         if (!s || isNaN(s)) return '0:00';
-        const m = Math.floor(s / 60);
+        const m   = Math.floor(s / 60);
         const sec = Math.floor(s % 60).toString().padStart(2, '0');
         return `${m}:${sec}`;
     }
@@ -421,14 +455,12 @@
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         controller.loadAudio(file);
         controller.attachMetadata({ title: file.name });
-
         wavesurfer.load(URL.createObjectURL(file));
-
-        enableControls();
         document.getElementById('meta-title').value = file.name;
+        enableControls();
+        updateNowPlaying();
         statusDiv.textContent = 'Loaded: ' + file.name;
     });
 
@@ -436,6 +468,7 @@
     playBtn.addEventListener('click', () => {
         controller.play();
         startSpectrum();
+        startBeatListener();
     });
 
     pauseBtn.addEventListener('click', () => {
@@ -450,59 +483,63 @@
 
     seekBar.addEventListener('input', () => {
         const state = controller.getState();
-        if (state.duration) {
-            const t = (seekBar.value / 100) * state.duration;
-            timeCurrent.textContent = formatTime(t);
-        }
+        if (state.duration) timeCurrent.textContent = formatTime((seekBar.value / 100) * state.duration);
     });
 
     seekBar.addEventListener('change', () => {
         const state = controller.getState();
-        if (state.duration) {
-            controller.seek((seekBar.value / 100) * state.duration);
-        }
+        if (state.duration) controller.seek((seekBar.value / 100) * state.duration);
         isSeeking = false;
     });
 
     // ── Metadata save ─────────────────────────────────────────────────────
     document.getElementById('save-meta-btn').addEventListener('click', () => {
+        const bpmVal    = parseFloat(document.getElementById('meta-bpm').value);
+        const offsetVal = parseFloat(document.getElementById('meta-offset').value);
+
         const meta = {
             title:  document.getElementById('meta-title').value  || undefined,
             artist: document.getElementById('meta-artist').value || undefined,
-            bpm:    parseFloat(document.getElementById('meta-bpm').value)    || undefined,
+            bpm:    isNaN(bpmVal)    ? undefined : bpmVal,
             key:    document.getElementById('meta-key').value    || undefined,
             genre:  document.getElementById('meta-genre').value  || undefined,
-            offset: parseFloat(document.getElementById('meta-offset').value) || 0,
+            offset: isNaN(offsetVal) ? 0 : offsetVal,
         };
+
+        // attachMetadata will: restart beat scheduler (BPM), seek to offset
         controller.attachMetadata(meta);
-        const saved = controller.getMetadata();
+
+        // If BPM changed and we're playing, re-subscribe beat listener
+        if (meta.bpm && !engine.getPlaybackState().paused) {
+            startBeatListener();
+        }
+
+        updateNowPlaying();
+
+        const saved = controller.getMetadata() || {};
         const parts = [];
         if (saved.title)  parts.push(saved.title);
         if (saved.artist) parts.push(saved.artist);
         if (saved.bpm)    parts.push(saved.bpm + ' BPM');
         if (saved.key)    parts.push(saved.key);
         if (saved.genre)  parts.push(saved.genre);
+        if (saved.offset) parts.push('offset: ' + saved.offset + 's');
         metaDisplay.textContent = parts.length ? parts.join(' · ') : 'No metadata saved.';
     });
 
     // ── Timeline sync ─────────────────────────────────────────────────────
     syncBtn.addEventListener('click', () => {
         const t = parseFloat(document.getElementById('timeline-input').value);
-        if (!isNaN(t)) {
-            controller.syncToTimeline(t);
-        }
+        if (!isNaN(t)) controller.syncToTimeline(t);
     });
 
     // ── Playback status poll ──────────────────────────────────────────────
     setInterval(() => {
         const state = controller.getState();
         if (!state.duration) return;
-
         const status = state.playing ? 'Playing' : 'Paused';
         statusDiv.textContent = `${status} — ${formatTime(state.currentTime)} / ${formatTime(state.duration)}`;
-
         timeTotal.textContent = formatTime(state.duration);
-
         if (!isSeeking) {
             seekBar.value = (state.currentTime / state.duration) * 100;
             timeCurrent.textContent = formatTime(state.currentTime);

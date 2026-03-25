@@ -1,5 +1,5 @@
 // AudioEngine.js - Yazeed
-// Responsible for: core audio playback, state management, analysis signals
+// Responsible for: core audio playback, state management, analysis signals, beat scheduling
 // Exposes playback state to be read and controlled by platform
 //
 // HOW TO USE (for AudioController.js):
@@ -7,8 +7,8 @@
 //   const engine = new AudioEngine();
 //
 //   engine.setAudioSource(file, metadata);   // load an audio file (HTML5 File object)
-//   engine.play();                            // start playback
-//   engine.pause();                           // pause playback
+//   engine.play();                            // start playback + beat scheduler
+//   engine.pause();                           // pause playback + beat scheduler
 //   engine.seek(time);                        // seek to time in seconds
 //   engine.getPlaybackState();               // returns { playing, currentTime, duration }
 //   engine.setPlaybackState({...});          // force-set playback state (for sync)
@@ -16,8 +16,11 @@
 //   engine.getAnalysisData();               // returns { frequencyData, timeDomainData, bufferLength }
 //   engine.getBassAndMid();                 // returns { bass, mid } normalized 0–1 (matches MAGE shader inputs)
 //   engine.getMetadata();                   // returns attached metadata object
-//   engine.attachMetadata(meta);            // attach/update metadata without reloading file
+//   engine.attachMetadata(meta);            // attach/update metadata; applies offset + restarts beat scheduler
+//   engine.onBeat(callback);               // subscribe to beat events fired at the BPM rate
 //   engine.getMediaElement();               // returns the raw HTMLAudioElement (for WaveSurfer)
+//   engine.getAudioContext();              // returns the Web Audio API AudioContext
+//   engine.getSourceNode();               // returns the MediaElementSourceNode
 
 class AudioEngine {
     constructor() {
@@ -29,7 +32,13 @@ class AudioEngine {
         this._analyser = null;
         this._source = null;
         this._analysisConnected = false;
+
+        // Beat scheduler — fires callbacks at the BPM rate while playing
+        this._beatCallbacks = [];
+        this._beatInterval  = null;
     }
+
+    // ── Internal ────────────────────────────────────────────────────────────
 
     // Lazily create and connect the Web Audio API analyser.
     // Must be called after a user gesture (browser autoplay policy).
@@ -46,20 +55,42 @@ class AudioEngine {
         }
         this._source = this._audioCtx.createMediaElementSource(this._audio);
         this._analyser = this._audioCtx.createAnalyser();
-        // fftSize 256 → 128 usable frequency bins.
-        // Enough resolution for a smooth spectrum display.
-        // Bass (bin 2) and mid (bin 4) indices still match MAGE's shader convention.
+        // fftSize 256 → 128 usable frequency bins, enough for a smooth spectrum.
+        // Bass (bin 2) and mid (bin 4) match MAGE's shader convention.
         this._analyser.fftSize = 256;
         this._source.connect(this._analyser);
         this._analyser.connect(this._audioCtx.destination);
         this._analysisConnected = true;
     }
 
+    // Start the beat interval based on current metadata BPM.
+    // Each tick fires all registered beat callbacks.
+    _startBeatScheduler() {
+        this._stopBeatScheduler();
+        const bpm = this._metadata && this._metadata.bpm;
+        if (!bpm || bpm <= 0) return;
+        const intervalMs = (60 / bpm) * 1000;
+        this._beatInterval = setInterval(() => {
+            if (this._audio.paused) return;
+            const payload = { bpm, currentTime: this._audio.currentTime };
+            this._beatCallbacks.forEach(cb => cb(payload));
+        }, intervalMs);
+    }
+
+    _stopBeatScheduler() {
+        if (this._beatInterval) {
+            clearInterval(this._beatInterval);
+            this._beatInterval = null;
+        }
+    }
+
+    // ── Source ──────────────────────────────────────────────────────────────
+
     // Load an audio file into the engine.
     // Pass null to clear the current file.
     // metadata is optional: { title, artist, bpm, key, genre, offset }
     setAudioSource(file, metadata = null) {
-        // Clean up the previous file's memory before loading a new one
+        this._stopBeatScheduler();
         if (this._audio.src) {
             URL.revokeObjectURL(this._audio.src);
             this._audio.src = '';
@@ -70,19 +101,23 @@ class AudioEngine {
         this._audio.load();
     }
 
-    // Start playing audio
+    // ── Playback ────────────────────────────────────────────────────────────
+
+    // Start playing audio and the beat scheduler.
     play() {
         this._connectAnalyser();
-        return this._audio.play();
+        const result = this._audio.play();
+        this._startBeatScheduler();
+        return result;
     }
 
-    // Pause audio
+    // Pause audio and stop the beat scheduler.
     pause() {
         this._audio.pause();
+        this._stopBeatScheduler();
     }
 
     // Seek to a specific time in seconds.
-    // Example: engine.seek(30) jumps to 0:30
     seek(time) {
         if (typeof time !== 'number') return;
         const duration = this._audio.duration;
@@ -91,7 +126,7 @@ class AudioEngine {
     }
 
     // Returns the current playback state.
-    // Example return value: { playing: true, currentTime: 12.4, duration: 240.0 }
+    // { playing: bool, currentTime: number, duration: number }
     getPlaybackState() {
         const state = {
             playing: !this._audio.paused,
@@ -103,8 +138,7 @@ class AudioEngine {
         return state;
     }
 
-    // Force the engine into a specific playback state.
-    // Useful for syncing the UI with the engine.
+    // Force the engine into a specific playback state (for sync).
     // Pass: { playing: boolean, currentTime: number }
     setPlaybackState({ playing, currentTime }) {
         if (typeof currentTime === 'number') {
@@ -117,8 +151,7 @@ class AudioEngine {
         }
     }
 
-    // Sync engine playback position to an external performance timeline.
-    // Any master clock (video, DAW transport, etc.) can push time here.
+    // Sync to an external performance timeline (master clock).
     // Tolerance of 0.3s avoids micro-seeks during normal drift.
     syncToTimeline(externalTime) {
         if (typeof externalTime !== 'number') return;
@@ -128,10 +161,10 @@ class AudioEngine {
         }
     }
 
-    // Returns real-time audio analysis data from the Web Audio API AnalyserNode.
+    // ── Analysis ────────────────────────────────────────────────────────────
+
+    // Returns real-time frequency + waveform data.
     // Returns null if the analyser is not yet connected (call play() first).
-    // frequencyData: amplitude per frequency bin (Uint8Array, 0–255), 32 bins at fftSize 64
-    // timeDomainData: raw waveform samples (Uint8Array, 0–255, 128 = silence)
     getAnalysisData() {
         if (!this._analyser) return null;
         const bufferLength = this._analyser.frequencyBinCount;
@@ -142,11 +175,8 @@ class AudioEngine {
         return { frequencyData, timeDomainData, bufferLength };
     }
 
-    // Returns bass and mid frequency values normalized to 0–1.
-    // Matches the exact bin indices used by MAGE's shader system:
-    //   bass → bin 2 (low frequencies)
-    //   mid  → bin 4 (mid frequencies)
-    // Returns null if the analyser is not yet connected (call play() first).
+    // Returns { bass, mid } normalized 0–1.
+    // Bin indices match MAGE's shader system (bin 2 = bass, bin 4 = mid).
     getBassAndMid() {
         if (!this._analyser) return null;
         const data = new Uint8Array(this._analyser.frequencyBinCount);
@@ -157,34 +187,63 @@ class AudioEngine {
         };
     }
 
-    // Attach or update metadata without reloading the audio file.
-    // Merges with existing metadata.
-    // Example: engine.attachMetadata({ bpm: 128, key: 'Am' })
+    // ── Metadata ────────────────────────────────────────────────────────────
+
+    // Attach or update metadata. Merges with existing metadata.
+    // Automatically:
+    //   - Restarts the beat scheduler if BPM changed
+    //   - Seeks to offset if offset is provided
+    // Example: engine.attachMetadata({ bpm: 128, key: 'Am', offset: 30 })
     attachMetadata(meta) {
         this._metadata = Object.assign({}, this._metadata || {}, meta);
+
+        // BPM changed — restart beat scheduler to match new tempo
+        if ('bpm' in meta) {
+            if (!this._audio.paused) {
+                this._startBeatScheduler();
+            }
+        }
+
+        // Offset provided — seek playback to that position
+        if ('offset' in meta && typeof meta.offset === 'number') {
+            this.seek(meta.offset);
+        }
     }
 
-    // Returns the metadata passed into setAudioSource or attachMetadata.
-    // Example: { title: "song.mp3", artist: "...", bpm: 120, key: "Am", genre: "...", offset: 0 }
+    // Returns the full metadata object.
+    // { title, artist, bpm, key, genre, offset, preset: { minimizing_factor, ... } }
     getMetadata() {
         return this._metadata;
     }
 
-    // Returns the underlying HTMLAudioElement.
-    // Used by external renderers (e.g. WaveSurfer) to share the same audio source.
+    // ── Beat subscription ───────────────────────────────────────────────────
+
+    // Subscribe to beat events fired at the BPM rate.
+    // callback receives: { bpm, currentTime }
+    // Returns an unsubscribe function.
+    // Example:
+    //   const stop = engine.onBeat(({ bpm, currentTime }) => console.log('beat', bpm));
+    //   stop(); // unsubscribe
+    onBeat(callback) {
+        this._beatCallbacks.push(callback);
+        return () => {
+            this._beatCallbacks = this._beatCallbacks.filter(cb => cb !== callback);
+        };
+    }
+
+    // ── Accessors ───────────────────────────────────────────────────────────
+
+    // Returns the underlying HTMLAudioElement (for WaveSurfer).
     getMediaElement() {
         return this._audio;
     }
 
-    // Returns the Web Audio API AudioContext, or null if not yet connected.
-    // Use this to share the context with external visualizers (e.g. audioMotion-analyzer).
+    // Returns the Web Audio API AudioContext (share with external visualizers).
     getAudioContext() {
         return this._audioCtx;
     }
 
-    // Returns the MediaElementSourceNode, or null if not yet connected.
-    // Pass this into audioMotion.connectInput() so it shares the engine's audio graph
-    // instead of trying to create a second (invalid) connection to the same element.
+    // Returns the MediaElementSourceNode (share with external visualizers).
     getSourceNode() {
         return this._source;
     }

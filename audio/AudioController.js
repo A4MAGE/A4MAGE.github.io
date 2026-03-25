@@ -1,52 +1,53 @@
 // AudioController.js - Gladys
-// Responsible for: platform-side commands (load, play, pause, seek, metadata, analysis)
+// Responsible for: platform-side commands (load, play, pause, seek, metadata, analysis, beat)
 // Sends commands to AudioEngine, reads back playback state
 
 class AudioController {
     constructor(engine) {
-        // engine is the AudioEngine instance passed in from the platform
         this.engine = engine;
         this._analysisCallback = null;
-        this._analysisFrameId = null;
+        this._analysisFrameId  = null;
     }
 
+    // ── Source ──────────────────────────────────────────────────────────────
+
     loadAudio(file) {
-        if (!file) throw new Error("file loading error");
+        if (!file) throw new Error('loadAudio: file is required');
         return this.engine.setAudioSource(file);
     }
 
+    // ── Playback ────────────────────────────────────────────────────────────
+
     play() {
-        // plays audio unless already playing
         const state = this.getState();
-        if (state.playing) {
-            return;
-        }
+        if (state.playing) return;
         return this.engine.play();
     }
 
     pause() {
-        // pauses audio when playing
         const state = this.getState();
-        if (state.playing) {
-            this.engine.pause();
-        } else {
-            return;
-        }
+        if (state.playing) this.engine.pause();
     }
 
-    // Seek to a specific time in seconds.
     seek(time) {
         this.engine.seek(time);
     }
 
     // Sync to an external timeline (master clock).
-    // Call this repeatedly from your timeline's tick/update loop.
     syncToTimeline(externalTime) {
         this.engine.syncToTimeline(externalTime);
     }
 
-    // Attach metadata to the currently loaded audio.
-    // Example: controller.attachMetadata({ bpm: 128, key: 'Am', artist: 'Name' })
+    getState() {
+        return this.engine.getPlaybackState();
+        // returns: { playing: bool, currentTime: number, duration: number }
+    }
+
+    // ── Metadata ────────────────────────────────────────────────────────────
+
+    // Attach or update metadata on the current track.
+    // Automatically applies offset (seeks) and restarts beat scheduler if BPM changed.
+    // Example: controller.attachMetadata({ title: 'Song', bpm: 128, offset: 10 })
     attachMetadata(meta) {
         this.engine.attachMetadata(meta);
     }
@@ -55,27 +56,9 @@ class AudioController {
         return this.engine.getMetadata();
     }
 
-    getState() {
-        return this.engine.getPlaybackState();
-        // returns: { playing: true/false, currentTime: 12.4, duration: 240.0 }
-    }
-
-    // Load a preset JSON object and extract its audio-processing parameters.
+    // Load a preset JSON and extract its audio-processing parameters.
     // Does NOT load an audio file — call loadAudio(file) separately.
-    //
-    // The preset drives how the audio signal shapes the visuals:
-    //   minimizing_factor  — scales the raw bass/mid signal down
-    //   power_factor       — applies a power curve (higher = more dramatic peaks)
-    //   base_speed         — animation floor speed when audio is quiet
-    //   easing_speed       — how smoothly the visual reacts to audio changes
-    //   volume_multiplier  — master gate (0 = audio doesn't drive visuals)
-    //
-    // Returns the extracted audio params so the caller (e.g. MAGE renderer) can apply them.
-    // Throws if the preset is missing required fields.
-    //
-    // Example:
-    //   const params = controller.loadPreset(presetJSON);
-    //   // params: { minimizing_factor, power_factor, base_speed, easing_speed, volume_multiplier }
+    // Returns { minimizing_factor, power_factor, base_speed, easing_speed, volume_multiplier }
     loadPreset(preset) {
         if (!preset || typeof preset !== 'object') {
             throw new Error('loadPreset: preset must be a JSON object');
@@ -96,30 +79,25 @@ class AudioController {
             volume_multiplier: state.volume_multiplier ?? 0,
         };
 
-        // Store alongside any existing audio metadata so the renderer can read them back
         this.engine.attachMetadata({ preset: audioParams });
-
         return audioParams;
     }
 
-    // Returns a single snapshot of analysis data.
-    // { frequencyData: Uint8Array, timeDomainData: Uint8Array, bufferLength: number }
+    // ── Analysis ────────────────────────────────────────────────────────────
+
+    // Single snapshot: { frequencyData, timeDomainData, bufferLength }
     getAnalysis() {
         return this.engine.getAnalysisData();
     }
 
-    // Returns { bass, mid } normalized 0–1.
-    // These are the exact values MAGE's shader system consumes to drive visuals.
+    // { bass, mid } normalized 0–1 — direct inputs for MAGE shaders.
     getBassAndMid() {
         return this.engine.getBassAndMid();
     }
 
-    // Subscribe to continuous analysis data on every animation frame.
+    // Subscribe to continuous analysis on every animation frame.
     // callback receives: { frequencyData, timeDomainData, bufferLength }
-    // Returns a stop function — call it to unsubscribe.
-    // Example:
-    //   const stop = controller.onAnalysis(data => console.log(data.frequencyData));
-    //   stop(); // when done
+    // Returns a stop function.
     onAnalysis(callback) {
         this._analysisCallback = callback;
         const tick = () => {
@@ -130,7 +108,6 @@ class AudioController {
             this._analysisFrameId = requestAnimationFrame(tick);
         };
         this._analysisFrameId = requestAnimationFrame(tick);
-
         return () => {
             this._analysisCallback = null;
             if (this._analysisFrameId) {
@@ -138,5 +115,17 @@ class AudioController {
                 this._analysisFrameId = null;
             }
         };
+    }
+
+    // ── Beat ────────────────────────────────────────────────────────────────
+
+    // Subscribe to beat events fired at the BPM rate set in metadata.
+    // callback receives: { bpm, currentTime }
+    // Returns an unsubscribe function.
+    // Example:
+    //   const stop = controller.onBeat(({ bpm }) => console.log('beat at', bpm, 'BPM'));
+    //   stop();
+    onBeat(callback) {
+        return this.engine.onBeat(callback);
     }
 }
