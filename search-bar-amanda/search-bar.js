@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Box, Flex, Center, chakra } from '@chakra-ui/react'
 
-import data from '../'
+import data from '../mock-data.json'
 
 import { SearchIcon } from '@chakra-ui/icons'
 
