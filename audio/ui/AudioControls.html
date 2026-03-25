@@ -1,17 +1,21 @@
 <!-- AudioControls.html - Yazeed & Gladys -->
-<!-- Responsible for: play/pause UI controls, displays playback state -->
+<!-- Responsible for: full audio controls UI — playback, seek, waveform, metadata, analysis -->
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Audio Controls</title>
+    <!-- WaveSurfer.js: interactive waveform display with click-to-seek -->
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+    <!-- audioMotion-analyzer: real-time frequency spectrum visualizer -->
+    <script src="https://cdn.jsdelivr.net/npm/audiomotion-analyzer@4/dist/audiomotion-analyzer.min.js"></script>
     <style>
         :root {
             font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
             color-scheme: dark;
             color: rgba(255, 255, 255, 0.87);
-            background-color: #2b2b2b;
+            background-color: #1a1a1a;
         }
 
         body {
@@ -20,28 +24,86 @@
             display: flex;
             place-items: center;
             justify-content: center;
+            padding: 2rem;
+            box-sizing: border-box;
         }
 
         #audio-controls {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-            padding: 1rem;
-            background-color: rgb(68, 68, 68);
+            gap: 1.25rem;
+            padding: 1.5rem;
+            background-color: #2b2b2b;
             border-radius: 1.5rem;
-            filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
-            min-width: 300px;
+            filter: drop-shadow(4px 4px 16px rgba(0, 0, 0, 0.6));
+            width: 100%;
+            max-width: 680px;
         }
 
         h2 {
             margin: 0;
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
-        input[type="file"] {
-            color: rgba(255, 255, 255, 0.87);
-            font-family: inherit;
+        /* ── Waveform ── */
+        #waveform-container {
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background: #1a1a1a;
         }
 
+        /* ── Spectrum analyzer ── */
+        #spectrum-container {
+            border-radius: 0.75rem;
+            overflow: hidden;
+            height: 120px;
+            background: #1a1a1a;
+        }
+
+        /* ── Seek row ── */
+        .seek-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .time-label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+            min-width: 44px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #seek-bar {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            background: #444;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #seek-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #2f66b5;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #seek-bar::-webkit-slider-thumb:hover {
+            background: #5b9bd5;
+        }
+
+        /* ── Buttons ── */
         .button-row {
             display: flex;
             gap: 0.5rem;
@@ -66,13 +128,113 @@
         }
 
         button:disabled {
-            background-color: #444;
+            background-color: #3a3a3a;
+            color: rgba(255,255,255,0.3);
             cursor: not-allowed;
         }
 
+        /* ── File input ── */
+        input[type="file"] {
+            color: rgba(255, 255, 255, 0.87);
+            font-family: inherit;
+        }
+
+        /* ── Status ── */
         #playback-status {
-            font-size: 0.9em;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85em;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* ── Metadata panel ── */
+        .section-label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .meta-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .meta-field label {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .meta-field input {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 0.4em 0.6em;
+            color: white;
+            font-family: inherit;
+            font-size: 0.85em;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .meta-field input:focus {
+            border-color: #2f66b5;
+        }
+
+        #save-meta-btn {
+            background: #444;
+            flex: none;
+            padding: 0.5em 1em;
+            font-size: 0.85em;
+        }
+
+        #save-meta-btn:hover {
+            background: #555;
+        }
+
+        /* ── Timeline sync demo ── */
+        .timeline-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        #timeline-input {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 0.4em 0.6em;
+            color: white;
+            font-family: inherit;
+            font-size: 0.85em;
+            width: 80px;
+            outline: none;
+        }
+
+        #sync-btn {
+            flex: none;
+            padding: 0.5em 1em;
+            font-size: 0.85em;
+        }
+
+        #meta-display {
+            font-size: 0.8em;
+            color: rgba(255,255,255,0.45);
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            margin: 0;
         }
     </style>
 </head>
@@ -83,48 +245,244 @@
 
     <input type="file" id="audio-file" accept="audio/*">
 
+    <!-- Waveform -->
+    <div id="waveform-container"></div>
+
+    <!-- Seek scrubber -->
+    <div class="seek-row">
+        <span class="time-label" id="time-current">0:00</span>
+        <input type="range" id="seek-bar" min="0" max="100" step="0.1" value="0" disabled>
+        <span class="time-label" id="time-total">0:00</span>
+    </div>
+
+    <!-- Play / Pause -->
     <div class="button-row">
         <button id="play-btn" disabled>Play</button>
         <button id="pause-btn" disabled>Pause</button>
     </div>
 
     <div id="playback-status">No file loaded.</div>
+
+    <hr>
+
+    <!-- Spectrum analyzer -->
+    <div class="section-label">Frequency Spectrum</div>
+    <div id="spectrum-container"></div>
+
+    <hr>
+
+    <!-- Metadata -->
+    <div class="section-label">Metadata</div>
+    <div class="metadata-grid">
+        <div class="meta-field">
+            <label>Title</label>
+            <input type="text" id="meta-title" placeholder="Track title">
+        </div>
+        <div class="meta-field">
+            <label>Artist</label>
+            <input type="text" id="meta-artist" placeholder="Artist name">
+        </div>
+        <div class="meta-field">
+            <label>BPM</label>
+            <input type="number" id="meta-bpm" placeholder="120">
+        </div>
+        <div class="meta-field">
+            <label>Key</label>
+            <input type="text" id="meta-key" placeholder="Am">
+        </div>
+        <div class="meta-field">
+            <label>Genre</label>
+            <input type="text" id="meta-genre" placeholder="Genre">
+        </div>
+        <div class="meta-field">
+            <label>Offset (s)</label>
+            <input type="number" id="meta-offset" placeholder="0" step="0.1">
+        </div>
+    </div>
+    <div class="button-row" style="margin-top:0.25rem">
+        <button id="save-meta-btn">Save Metadata</button>
+    </div>
+    <div id="meta-display">No metadata saved.</div>
+
+    <hr>
+
+    <!-- Timeline sync -->
+    <div class="section-label">Performance Timeline Sync</div>
+    <div class="timeline-row">
+        <input type="number" id="timeline-input" placeholder="sec" step="0.1" min="0">
+        <button id="sync-btn" class="button-row" disabled>Sync to Timeline</button>
+    </div>
 </div>
 
 <script src="../AudioEngine.js"></script>
+<script src="../AudioController.js"></script>
 <script>
-    const engine = new AudioEngine();
+    // ── Setup ──────────────────────────────────────────────────────────────
+    const engine     = new AudioEngine();
+    const controller = new AudioController(engine);
 
-    const fileInput = document.getElementById('audio-file');
-    const playBtn = document.getElementById('play-btn');
-    const pauseBtn = document.getElementById('pause-btn');
-    const statusDiv = document.getElementById('playback-status');
+    const fileInput    = document.getElementById('audio-file');
+    const playBtn      = document.getElementById('play-btn');
+    const pauseBtn     = document.getElementById('pause-btn');
+    const statusDiv    = document.getElementById('playback-status');
+    const seekBar      = document.getElementById('seek-bar');
+    const timeCurrent  = document.getElementById('time-current');
+    const timeTotal    = document.getElementById('time-total');
+    const syncBtn      = document.getElementById('sync-btn');
+    const metaDisplay  = document.getElementById('meta-display');
 
+    // ── WaveSurfer (waveform + click-to-seek) ─────────────────────────────
+    const wavesurfer = WaveSurfer.create({
+        container: '#waveform-container',
+        waveColor: '#2f66b5',
+        progressColor: '#5b9bd5',
+        cursorColor: '#fff',
+        height: 80,
+        normalize: true,
+        interact: true,
+        media: engine.getMediaElement(),   // share the engine's audio element
+    });
+
+    wavesurfer.on('seek', (progress) => {
+        const state = controller.getState();
+        if (state.duration) {
+            controller.seek(progress * state.duration);
+        }
+    });
+
+    // ── audioMotion-analyzer (spectrum) ───────────────────────────────────
+    let audioMotion = null;
+
+    function initAudioMotion() {
+        if (audioMotion) return;
+        try {
+            audioMotion = new AudioMotionAnalyzer(
+                document.getElementById('spectrum-container'),
+                {
+                    source: engine.getMediaElement(),
+                    height: 120,
+                    mode: 2,
+                    gradient: 'prism',
+                    showBgColor: true,
+                    bgAlpha: 0,
+                    showScaleX: false,
+                    smoothing: 0.8,
+                    reflexRatio: 0.4,
+                    reflexAlpha: 0.25,
+                    reflexFit: true,
+                }
+            );
+        } catch(e) {
+            // audioMotion may fail before user gesture — retry on play
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function formatTime(s) {
+        if (!s || isNaN(s)) return '0:00';
+        const m = Math.floor(s / 60);
+        const sec = Math.floor(s % 60).toString().padStart(2, '0');
+        return `${m}:${sec}`;
+    }
+
+    function enableControls() {
+        playBtn.disabled  = false;
+        pauseBtn.disabled = false;
+        seekBar.disabled  = false;
+        syncBtn.disabled  = false;
+    }
+
+    // ── File load ─────────────────────────────────────────────────────────
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        engine.setAudioSource(file, { title: file.name });
-        playBtn.disabled = false;
-        pauseBtn.disabled = false;
+
+        controller.loadAudio(file);
+        controller.attachMetadata({ title: file.name });
+
+        wavesurfer.load(URL.createObjectURL(file));
+
+        enableControls();
+        document.getElementById('meta-title').value = file.name;
         statusDiv.textContent = 'Loaded: ' + file.name;
     });
 
+    // ── Playback ──────────────────────────────────────────────────────────
     playBtn.addEventListener('click', () => {
-        engine.play();
+        controller.play();
+        initAudioMotion();
     });
 
     pauseBtn.addEventListener('click', () => {
-        engine.pause();
+        controller.pause();
     });
 
+    // ── Seek scrubber ─────────────────────────────────────────────────────
+    let isSeeking = false;
+
+    seekBar.addEventListener('mousedown', () => { isSeeking = true; });
+    seekBar.addEventListener('touchstart', () => { isSeeking = true; });
+
+    seekBar.addEventListener('input', () => {
+        const state = controller.getState();
+        if (state.duration) {
+            const t = (seekBar.value / 100) * state.duration;
+            timeCurrent.textContent = formatTime(t);
+        }
+    });
+
+    seekBar.addEventListener('change', () => {
+        const state = controller.getState();
+        if (state.duration) {
+            controller.seek((seekBar.value / 100) * state.duration);
+        }
+        isSeeking = false;
+    });
+
+    // ── Metadata save ─────────────────────────────────────────────────────
+    document.getElementById('save-meta-btn').addEventListener('click', () => {
+        const meta = {
+            title:  document.getElementById('meta-title').value  || undefined,
+            artist: document.getElementById('meta-artist').value || undefined,
+            bpm:    parseFloat(document.getElementById('meta-bpm').value)    || undefined,
+            key:    document.getElementById('meta-key').value    || undefined,
+            genre:  document.getElementById('meta-genre').value  || undefined,
+            offset: parseFloat(document.getElementById('meta-offset').value) || 0,
+        };
+        controller.attachMetadata(meta);
+        const saved = controller.getMetadata();
+        const parts = [];
+        if (saved.title)  parts.push(saved.title);
+        if (saved.artist) parts.push(saved.artist);
+        if (saved.bpm)    parts.push(saved.bpm + ' BPM');
+        if (saved.key)    parts.push(saved.key);
+        if (saved.genre)  parts.push(saved.genre);
+        metaDisplay.textContent = parts.length ? parts.join(' · ') : 'No metadata saved.';
+    });
+
+    // ── Timeline sync ─────────────────────────────────────────────────────
+    syncBtn.addEventListener('click', () => {
+        const t = parseFloat(document.getElementById('timeline-input').value);
+        if (!isNaN(t)) {
+            controller.syncToTimeline(t);
+        }
+    });
+
+    // ── Playback status poll ──────────────────────────────────────────────
     setInterval(() => {
-        const state = engine.getPlaybackState();
+        const state = controller.getState();
         if (!state.duration) return;
-        const current = state.currentTime.toFixed(1);
-        const total = state.duration.toFixed(1);
+
         const status = state.playing ? 'Playing' : 'Paused';
-        statusDiv.textContent = status + ' — ' + current + 's / ' + total + 's';
-    }, 1000);
+        statusDiv.textContent = `${status} — ${formatTime(state.currentTime)} / ${formatTime(state.duration)}`;
+
+        timeTotal.textContent = formatTime(state.duration);
+
+        if (!isSeeking) {
+            seekBar.value = (state.currentTime / state.duration) * 100;
+            timeCurrent.textContent = formatTime(state.currentTime);
+        }
+    }, 250);
 </script>
 
 </body>
