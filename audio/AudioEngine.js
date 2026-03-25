@@ -46,9 +46,10 @@ class AudioEngine {
         }
         this._source = this._audioCtx.createMediaElementSource(this._audio);
         this._analyser = this._audioCtx.createAnalyser();
-        // fftSize 64 → 32 usable frequency bins.
-        // Matches MAGE's shader system: bass at bin 2, mid at bin 4.
-        this._analyser.fftSize = 64;
+        // fftSize 256 → 128 usable frequency bins.
+        // Enough resolution for a smooth spectrum display.
+        // Bass (bin 2) and mid (bin 4) indices still match MAGE's shader convention.
+        this._analyser.fftSize = 256;
         this._source.connect(this._analyser);
         this._analyser.connect(this._audioCtx.destination);
         this._analysisConnected = true;

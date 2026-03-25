@@ -8,8 +8,6 @@
     <title>Audio Controls</title>
     <!-- WaveSurfer.js: interactive waveform display with click-to-seek -->
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
-    <!-- audioMotion-analyzer: real-time frequency spectrum visualizer -->
-    <script src="https://cdn.jsdelivr.net/npm/audiomotion-analyzer@4/dist/audiomotion-analyzer.min.js"></script>
     <style>
         :root {
             font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -56,10 +54,11 @@
         }
 
         /* ── Spectrum analyzer ── */
-        #spectrum-container {
-            border-radius: 0.75rem;
-            overflow: hidden;
+        #spectrum-canvas {
+            display: block;
+            width: 100%;
             height: 120px;
+            border-radius: 0.75rem;
             background: #1a1a1a;
         }
 
@@ -267,7 +266,7 @@
 
     <!-- Spectrum analyzer -->
     <div class="section-label">Frequency Spectrum</div>
-    <div id="spectrum-container"></div>
+    <canvas id="spectrum-canvas"></canvas>
 
     <hr>
 
@@ -350,39 +349,57 @@
         }
     });
 
-    // ── audioMotion-analyzer (spectrum) ───────────────────────────────────
-    let audioMotion = null;
+    // ── Spectrum canvas renderer ───────────────────────────────────────────
+    // Draws frequency bars directly from the engine's AnalyserNode.
+    // No external library — guaranteed to work with the engine's audio graph.
+    const specCanvas = document.getElementById('spectrum-canvas');
+    const specCtx    = specCanvas.getContext('2d');
+    let specRunning  = false;
 
-    function initAudioMotion() {
-        if (audioMotion) return;
-        // The browser only allows one MediaElementSource per audio element.
-        // AudioEngine already owns that connection, so we pass its AudioContext
-        // and connect audioMotion to the existing source node instead.
-        const ctx    = engine.getAudioContext();
-        const source = engine.getSourceNode();
-        if (!ctx || !source) return;
-        try {
-            audioMotion = new AudioMotionAnalyzer(
-                document.getElementById('spectrum-container'),
-                {
-                    audioCtx: ctx,
-                    connectSpeakers: false,
-                    height: 120,
-                    mode: 2,
-                    gradient: 'prism',
-                    showBgColor: true,
-                    bgAlpha: 0,
-                    showScaleX: false,
-                    smoothing: 0.8,
-                    reflexRatio: 0.4,
-                    reflexAlpha: 0.25,
-                    reflexFit: true,
-                }
-            );
-            audioMotion.connectInput(source);
-        } catch(e) {
-            console.error('audioMotion init failed:', e);
+    function resizeCanvas() {
+        specCanvas.width  = specCanvas.offsetWidth;
+        specCanvas.height = specCanvas.offsetHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawSpectrum() {
+        if (!specRunning) return;
+        requestAnimationFrame(drawSpectrum);
+
+        const data = engine.getAnalysisData();
+        const W = specCanvas.width;
+        const H = specCanvas.height;
+        specCtx.clearRect(0, 0, W, H);
+
+        if (!data) return;
+
+        const bins    = data.bufferLength;
+        const barW    = Math.max(2, (W / bins) - 1);
+        const gap     = 1;
+
+        for (let i = 0; i < bins; i++) {
+            const ratio  = data.frequencyData[i] / 255;
+            const barH   = ratio * H;
+            const x      = i * (barW + gap);
+
+            // Gradient: deep blue at low amplitude → cyan/white at peak
+            const grad = specCtx.createLinearGradient(0, H, 0, H - barH);
+            grad.addColorStop(0,   '#1a4a8a');
+            grad.addColorStop(0.5, '#2f66b5');
+            grad.addColorStop(1,   '#7ec8e3');
+
+            specCtx.fillStyle = grad;
+            specCtx.beginPath();
+            specCtx.roundRect(x, H - barH, barW, barH, 2);
+            specCtx.fill();
         }
+    }
+
+    function startSpectrum() {
+        if (specRunning) return;
+        specRunning = true;
+        drawSpectrum();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -418,7 +435,7 @@
     // ── Playback ──────────────────────────────────────────────────────────
     playBtn.addEventListener('click', () => {
         controller.play();
-        initAudioMotion();
+        startSpectrum();
     });
 
     pauseBtn.addEventListener('click', () => {
