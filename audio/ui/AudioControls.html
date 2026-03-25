@@ -156,9 +156,9 @@
         #hint-text {
             position: fixed; top: 68%; left: 50%;
             transform: translateX(-50%);
-            font-family: var(--mono); font-size: 0.6rem;
-            letter-spacing: 0.22em; text-transform: uppercase;
-            color: var(--text-muted);
+            font-family: var(--mono); font-size: 0.52rem;
+            letter-spacing: 0.28em; text-transform: uppercase;
+            color: rgba(255,255,255,0.12);
             z-index: 4; pointer-events: none;
             transition: opacity 0.6s;
             text-align: center;
@@ -309,7 +309,15 @@
             white-space: nowrap;
         }
         #file-pick-btn:hover { background: rgba(255,255,255,0.09); color: var(--text); }
-        #audio-file { display: none; }
+        /* Hidden but fully functional — clip approach works in all browsers */
+        #audio-file {
+            position: absolute;
+            width: 1px; height: 1px;
+            clip: rect(0,0,0,0);
+            clip-path: inset(50%);
+            overflow: hidden;
+            white-space: nowrap;
+        }
 
         #play-pause-btn {
             flex-shrink: 0; width: 42px; height: 42px;
@@ -448,8 +456,10 @@
 <!-- ══ BOTTOM BAR ══ -->
 <div id="bottom-bar">
     <div class="bar-top">
-        <button id="file-pick-btn">LOAD FILE</button>
-        <input type="file" id="audio-file" accept="audio/*">
+        <label id="file-pick-btn">
+            LOAD FILE
+            <input type="file" id="audio-file" accept="audio/*">
+        </label>
 
         <button id="play-pause-btn" disabled>
             <svg id="icon-play"  viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -610,22 +620,7 @@ const innerMat = new THREE.ShaderMaterial({
 const innerSphere = new THREE.Mesh(innerGeo, innerMat);
 scene.add(innerSphere);
 
-/* outer wireframe icosahedra */
-const outerGeo1  = new THREE.IcosahedronGeometry(1.38, 1);
-const outerMat1  = new THREE.MeshBasicMaterial({
-    color: 0x00c8ff, wireframe: true,
-    transparent: true, opacity: 0.13,
-});
-const outerMesh1 = new THREE.Mesh(outerGeo1, outerMat1);
-scene.add(outerMesh1);
-
-const outerGeo2  = new THREE.IcosahedronGeometry(1.62, 2);
-const outerMat2  = new THREE.MeshBasicMaterial({
-    color: 0x4433ff, wireframe: true,
-    transparent: true, opacity: 0.055,
-});
-const outerMesh2 = new THREE.Mesh(outerGeo2, outerMat2);
-scene.add(outerMesh2);
+/* outer wireframe removed — inner glow sphere is the hero */
 
 /* ambient point light halo */
 const pointLight = new THREE.PointLight(0x00c8ff, 1.2, 6);
@@ -656,17 +651,6 @@ function renderLoop() {
     innerSphere.rotation.y += 0.003 + (isPlaying ? mid  * 0.009 : 0);
     innerSphere.rotation.x  = Math.sin(t * 0.18) * 0.12;
 
-    outerMesh1.rotation.y -= 0.0045;
-    outerMesh1.rotation.x += 0.0008;
-    outerMesh1.rotation.z += 0.0004;
-
-    outerMesh2.rotation.y += 0.0022;
-    outerMesh2.rotation.z -= 0.0012;
-    outerMesh2.scale.setScalar(1 + (isPlaying ? mid * 0.06 : 0));
-
-    /* wireframe pulse */
-    outerMat1.opacity = 0.13 + (isPlaying ? bass * 0.25 : breathe * 1.5);
-    outerMesh1.scale.setScalar(1 + (isPlaying ? bass * 0.09 : 0));
 
     /* beat decay */
     beatVal = Math.max(0, beatVal - 0.038);
@@ -805,7 +789,7 @@ function setPlaying(playing) {
 /* ══════════════════════════════════════════════════
    FILE LOAD
 ══════════════════════════════════════════════════ */
-filePickBtn.addEventListener('click', () => fileInput.click());
+/* file input triggered natively via <label for="audio-file"> */
 
 fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
