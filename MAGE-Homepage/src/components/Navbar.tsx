@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router-dom';
 import Icon from "../assets/favicon.svg"
 
 function Navbar() {
@@ -9,11 +10,11 @@ function Navbar() {
         </div>
         <div className="list">
           <ul>
-            <li><a href="#home">Home</a></li>
-            <li><a href="#explore">Exlpore</a></li>
-            <li><a href="#engine">Create</a></li>
-            <li><a href="#about">About</a></li>
-            <li><a href="#contact">Contact</a></li>
+            <li><NavLink to="/">Home</NavLink></li>
+            <li><NavLink to="/explore">Explore</NavLink></li>
+            <li><NavLink to="/engine">Engine</NavLink></li>
+            <li><NavLink to="/about">About</NavLink></li>
+            <li><NavLink to="/contact">Contact</NavLink></li>
           </ul>
         </div>
         <div className="login-btn">

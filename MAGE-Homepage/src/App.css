@@ -1,6 +1,7 @@
 :root {
   --fontcolor: #FFFBDB;
-  --fontglow: rgba(255, 251, 219, 0.3)
+  --highlight-font: rgba(161, 250, 255);
+  --fontglow: rgba(255, 251, 219, 0.3);
 }
 
 .main-header {
@@ -36,38 +37,58 @@
   font-size: 1.3em;
 }
 
-/* Navbar */ 
+/* Navbar */
 .nav {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: fit-content;
+  min-width: 600px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 20px;
   box-sizing: border-box;
   z-index: 100;
+
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(70px) saturate(180%);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.nav .list a.active {
+  color: var(--highlight-font);
+}
+
+.nav .list ul {
+  display: flex;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav .list a {
+  text-decoration: none;
+  font-family: Helvetica;
+  color: var(--fontcolor);
+  padding: 4px 12px;
+  border-radius: 999px;
+  display: inline-block;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.nav .list a:hover {
+  transform: scale(1.12);
 }
 
 .mage-icon img {
   width: 40px;
   height: auto;
-}
-
-.list ul {
-  display: flex;
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-  gap: 10px;
-}
-
-.list ul li a {
-  color: var(--fontcolor);
-  font-family: Helvetica;
-  text-decoration: none;
-  padding: 8px 16px;
 }
 
 .login-btn a {
