@@ -1,8 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 // @ts-ignore
 import { initMAGE } from "./mage-engine.mjs";
 import "./engine.css";
-import tempPreset from "./presets/preset7.v2.json";
 
 type EnginePlayerProps = {
   width?: string;
@@ -11,43 +10,51 @@ type EnginePlayerProps = {
 
 const EnginePlayer = ({ width = "500px", displayControls = false }: EnginePlayerProps) => {
   const canvasRef = useRef(null); // This will keep play button disabled when canvas ref is null
-  const [isPlaying, setIsPlaying] = useState(false); // hides the play button and replaces with the engine canvas.
+  const [engine, setEngine] = useState<any>(null);
+  const [audioLoaded, setAudioLoaded] = useState(false);
 
-  const playEngine = () => {
-    if (isPlaying) {
-      return;
-    } else if (!canvasRef.current) {
-      console.error("Canvas ref not found");
-      return;
-    }
-
-    setIsPlaying(true);
+  useEffect(() => {
+    if (!canvasRef.current) return;
 
     const { engine } = initMAGE({
       canvas: canvasRef.current,
       withControls: displayControls,
-      autoStart: false,
+      autoStart: true,
       options: {
         log: true,
       },
     });
 
-    engine.start();
-    engine.loadPreset(tempPreset);
+    setEngine(engine);
+
+    engine.loadAudio(
+      "https://bnovkavuiekmkanohxpm.supabase.co/storage/v1/object/public/TempPublicMusic/rick.mp3",
+      setAudioLoaded,
+    );
+
+    return () => {
+      // Ensure audio/context is torn down when this component unmounts.
+      if (engine) {
+        engine.dispose();
+      }
+    };
+  }, []);
+
+  const playAudio = () => {
+    if (!engine) return;
+    engine.play();
   };
 
   // Either display the start engine button or the canvas that the engine plays on.
   return (
     <div>
-      <div style={{ display: isPlaying ? "block" : "none", width: width }}>
+      <div style={{ display: engine ? "block" : "none", width: width }}>
         <canvas ref={canvasRef} className="engine-player"></canvas>
       </div>
 
-      {!isPlaying && (
-        <button className="link-button" onClick={playEngine} disabled={!canvasRef}>
-          Start Engine
-        </button>
-      )}
+      <button className="link-button" onClick={playAudio} disabled={!audioLoaded}>
+        Play
+      </button>
     </div>
   );
 };

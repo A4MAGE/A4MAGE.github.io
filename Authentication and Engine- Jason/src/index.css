@@ -50,6 +50,10 @@ p {
   color: white;
 }
 
+.link-button:disabled {
+  background-color: #606264;
+}
+
 .home-container {
   height: 100vh;
   display: flex;
