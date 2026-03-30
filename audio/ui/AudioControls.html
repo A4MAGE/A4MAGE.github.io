@@ -1,131 +1,711 @@
 <!-- AudioControls.html - Yazeed & Gladys -->
-<!-- Responsible for: play/pause UI controls, displays playback state -->
+<!-- Audio controls: play/pause, seek, waveform, spectrum, metadata -->
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Audio Controls</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAGE Audio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:ital,wght@0,400;0,700&display=swap" rel="stylesheet">
+    <script src="vendor/wavesurfer.min.js"></script>
     <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         :root {
-            font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-            color-scheme: dark;
-            color: rgba(255, 255, 255, 0.87);
-            background-color: #2b2b2b;
+            --bg:          #050508;
+            --glass:       rgba(255,255,255,0.035);
+            --glass-b:     rgba(255,255,255,0.07);
+            --accent:      #00c8ff;
+            --indigo:      #3b2dff;
+            --text:        rgba(255,255,255,0.88);
+            --text-dim:    rgba(255,255,255,0.42);
+            --text-muted:  rgba(255,255,255,0.2);
+            --font:        'Space Grotesk', sans-serif;
+            --mono:        'Space Mono', monospace;
         }
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            place-items: center;
-            justify-content: center;
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
         }
 
-        #audio-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            padding: 1rem;
-            background-color: rgb(68, 68, 68);
-            border-radius: 1.5rem;
-            filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
-            min-width: 300px;
+        /* Deep space radial bg */
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% 32%, rgba(59,45,255,0.16) 0%, transparent 62%),
+                radial-gradient(ellipse 50% 40% at 80% 68%, rgba(0,200,255,0.08) 0%, transparent 52%),
+                radial-gradient(ellipse 35% 28% at 18% 78%, rgba(59,45,255,0.06) 0%, transparent 48%),
+                radial-gradient(circle 180px at 50% 32%, rgba(0,200,255,0.06) 0%, transparent 100%);
+            pointer-events: none;
         }
 
-        h2 {
-            margin: 0;
+        /* ─── Spectrum ─── */
+        #spectrum-canvas {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 62%; max-width: 640px; height: 110px;
+            z-index: 2; pointer-events: none;
+            border-radius: 6px;
         }
 
-        input[type="file"] {
-            color: rgba(255, 255, 255, 0.87);
-            font-family: inherit;
+        /* ─── WaveSurfer strip ─── */
+        #waveform-wrap {
+            position: fixed;
+            bottom: 108px;
+            left: 50%; transform: translateX(-50%);
+            width: 62%; max-width: 640px;
+            z-index: 3; opacity: 0.65;
         }
 
-        .button-row {
-            display: flex;
-            gap: 0.5rem;
+
+        /* ─── Right info strip ─── */
+        #right-strip {
+            position: fixed; top: 50%; right: 24px;
+            transform: translateY(-50%);
+            width: 52px; z-index: 10;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 20px;
         }
 
-        button {
-            border-radius: 8px;
-            border: 1px solid transparent;
-            padding: 0.6em 1.2em;
-            font-size: 1em;
-            font-weight: 500;
-            font-family: inherit;
-            color: white;
-            background-color: #2f66b5;
-            cursor: pointer;
-            transition: background-color 0.25s;
-            flex: 1;
+        .rs-item {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 5px;
         }
 
-        button:hover {
-            background-color: #28518a;
+        .rs-bar {
+            width: 2px; height: 48px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 2px; overflow: hidden;
+            position: relative;
         }
 
-        button:disabled {
-            background-color: #444;
-            cursor: not-allowed;
+        .rs-bar-fill {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: linear-gradient(to top, var(--indigo), var(--accent));
+            border-radius: 2px;
+            transition: height 0.2s ease;
+            height: 0%;
         }
 
-        #playback-status {
-            font-size: 0.9em;
-            color: rgba(255, 255, 255, 0.6);
+        .rs-label {
+            font-family: var(--mono); font-size: 0.48rem;
+            letter-spacing: 0.12em; text-transform: uppercase;
+            color: var(--text-muted);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
         }
+
+        .rs-divider {
+            width: 1px; height: 30px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* ─── MAGE wordmark ─── */
+        #mage-wordmark {
+            position: fixed; top: 22px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 10; pointer-events: none;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        #mage-wordmark span {
+            font-family: var(--mono); font-size: 0.62rem;
+            letter-spacing: 0.32em; text-transform: uppercase;
+            color: rgba(255,255,255,0.18);
+        }
+
+        #mage-wordmark::before, #mage-wordmark::after {
+            content: '';
+            display: block; width: 40px; height: 1px;
+            background: linear-gradient(to right, transparent, rgba(0,200,255,0.25));
+        }
+        #mage-wordmark::after {
+            background: linear-gradient(to left, transparent, rgba(0,200,255,0.25));
+        }
+
+        /* ─── Idle hint ─── */
+        #hint-text {
+            position: fixed; top: 68%; left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--mono); font-size: 0.52rem;
+            letter-spacing: 0.28em; text-transform: uppercase;
+            color: rgba(255,255,255,0.12);
+            z-index: 4; pointer-events: none;
+            transition: opacity 0.6s;
+            text-align: center;
+        }
+
+        /* ─── SIDE PANEL (left) ─── */
+        #side-panel {
+            position: fixed; top: 50%; left: 24px;
+            transform: translateY(-50%);
+            width: 218px; z-index: 10;
+            background: rgba(5,5,16,0.72);
+            border: 1px solid rgba(0,200,255,0.1);
+            border-top: 1px solid rgba(0,200,255,0.18);
+            border-radius: 18px;
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+            padding: 18px 16px;
+            display: flex; flex-direction: column; gap: 14px;
+            box-shadow: 0 0 40px rgba(0,200,255,0.04), 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        .panel-label {
+            font-family: var(--mono); font-size: 0.55rem;
+            letter-spacing: 0.18em; text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* Now Playing block */
+        #np-block {
+            display: flex; flex-direction: column; gap: 4px;
+            padding-bottom: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        #np-beat-row {
+            display: flex; align-items: center; gap: 6px;
+            margin-bottom: 1px;
+        }
+
+        #beat-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent); opacity: 0.18;
+            flex-shrink: 0;
+            transition: opacity 0.04s, transform 0.04s, box-shadow 0.04s;
+        }
+        #beat-dot.pulse {
+            opacity: 1; transform: scale(1.9);
+            box-shadow: 0 0 10px var(--accent), 0 0 20px rgba(0,200,255,0.4);
+        }
+
+        #np-bpm {
+            font-family: var(--mono); font-size: 0.6rem;
+            color: var(--accent); letter-spacing: 0.05em;
+            opacity: 0.8;
+        }
+
+        #np-title {
+            font-size: 0.85rem; font-weight: 600;
+            color: var(--text);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        #np-artist {
+            font-size: 0.7rem; color: var(--text-dim);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        #np-tags {
+            display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px;
+        }
+
+        .tag {
+            font-family: var(--mono); font-size: 0.56rem;
+            letter-spacing: 0.06em; padding: 2px 7px;
+            background: rgba(0,200,255,0.07);
+            border: 1px solid rgba(0,200,255,0.16);
+            border-radius: 20px; color: var(--accent);
+        }
+
+        /* Meta fields */
+        .meta-fields { display: flex; flex-direction: column; gap: 7px; }
+
+        .mf { display: flex; flex-direction: column; gap: 2px; }
+        .mf label {
+            font-family: var(--mono); font-size: 0.52rem;
+            letter-spacing: 0.12em; text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .mf input {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 7px; padding: 5px 9px;
+            color: var(--text); font-family: var(--font); font-size: 0.76rem;
+            outline: none; transition: border-color 0.18s, background 0.18s;
+            width: 100%;
+        }
+        .mf input:focus {
+            border-color: rgba(0,200,255,0.35);
+            background: rgba(0,200,255,0.035);
+        }
+        .mf input::placeholder { color: var(--text-muted); }
+
+        .mf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+
+        #save-meta-btn {
+            width: 100%; padding: 8px 0;
+            background: rgba(0,200,255,0.08);
+            border: 1px solid rgba(0,200,255,0.2);
+            border-radius: 9px;
+            color: var(--accent); font-family: var(--mono);
+            font-size: 0.62rem; letter-spacing: 0.1em;
+            cursor: pointer; transition: background 0.2s, border-color 0.2s;
+        }
+        #save-meta-btn:hover {
+            background: rgba(0,200,255,0.15);
+            border-color: rgba(0,200,255,0.45);
+        }
+
+        /* ─── BOTTOM BAR ─── */
+        #bottom-bar {
+            position: fixed; bottom: 16px;
+            left: 50%; transform: translateX(-50%);
+            width: calc(100% - 300px);
+            max-width: 920px; min-width: 400px;
+            z-index: 10;
+            background: rgba(6,6,16,0.78);
+            border: 1px solid rgba(0,200,255,0.12);
+            border-top: 1px solid rgba(0,200,255,0.2);
+            border-radius: 18px;
+            backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            padding: 14px 22px;
+            display: flex; flex-direction: column; gap: 9px;
+            box-shadow: 0 0 40px rgba(0,200,255,0.05), 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        .bar-top {
+            display: flex; align-items: center; gap: 12px;
+        }
+
+        #file-pick-btn {
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 9px;
+            color: var(--text-dim); font-family: var(--mono);
+            font-size: 0.6rem; letter-spacing: 0.08em;
+            padding: 6px 11px; cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            white-space: nowrap;
+        }
+        #file-pick-btn:hover { background: rgba(255,255,255,0.09); color: var(--text); }
+        /* Hidden but fully functional — clip approach works in all browsers */
+        #audio-file {
+            position: absolute;
+            width: 1px; height: 1px;
+            clip: rect(0,0,0,0);
+            clip-path: inset(50%);
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        #play-pause-btn {
+            flex-shrink: 0; width: 42px; height: 42px;
+            border-radius: 50%; background: var(--accent);
+            border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 0 22px rgba(0,200,255,0.38);
+        }
+        #play-pause-btn:hover { transform: scale(1.1); box-shadow: 0 0 34px rgba(0,200,255,0.58); }
+        #play-pause-btn:disabled {
+            background: rgba(255,255,255,0.09);
+            box-shadow: none; cursor: not-allowed;
+        }
+        #play-pause-btn:disabled svg { fill: rgba(255,255,255,0.2); }
+        #play-pause-btn svg { width: 17px; height: 17px; fill: #020202; }
+
+        #bar-title {
+            flex: 1; font-size: 0.8rem; color: var(--text-dim);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        #bar-title strong { color: var(--text); font-weight: 600; }
+
+        #bar-time-display {
+            font-family: var(--mono); font-size: 0.68rem;
+            color: var(--text-dim); flex-shrink: 0;
+            letter-spacing: 0.04em;
+        }
+
+        .bar-seek { display: flex; align-items: center; gap: 10px; }
+
+        .tlbl {
+            font-family: var(--mono); font-size: 0.65rem;
+            color: var(--text-muted); min-width: 34px; flex-shrink: 0;
+        }
+        .tlbl:last-child { text-align: right; }
+
+        #seek-bar {
+            flex: 1; -webkit-appearance: none; appearance: none;
+            height: 3px; border-radius: 2px;
+            background: linear-gradient(to right, rgba(59,45,255,0.3), rgba(0,200,255,0.15));
+            outline: none; cursor: pointer;
+        }
+        #seek-bar::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 11px; height: 11px;
+            border-radius: 50%; background: var(--accent);
+            cursor: pointer; box-shadow: 0 0 8px rgba(0,200,255,0.7);
+            transition: transform 0.12s;
+        }
+        #seek-bar::-webkit-slider-thumb:hover { transform: scale(1.4); }
+        #seek-bar:disabled { opacity: 0.35; cursor: default; }
+        #seek-bar:disabled::-webkit-slider-thumb { cursor: default; }
+
+        /* scrollbar gone */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
-<div id="audio-controls">
-    <h2>Audio Controls</h2>
+<!-- MAGE wordmark -->
+<div id="mage-wordmark"><span>MAGE Audio</span></div>
 
-    <input type="file" id="audio-file" accept="audio/*">
 
-    <div class="button-row">
-        <button id="play-btn" disabled>Play</button>
-        <button id="pause-btn" disabled>Pause</button>
+<!-- Spectrum -->
+<canvas id="spectrum-canvas"></canvas>
+
+<!-- WaveSurfer -->
+<div id="waveform-wrap"></div>
+
+<!-- Idle hint -->
+<div id="hint-text">Load a file to begin</div>
+
+<!-- ══ RIGHT STRIP ══ -->
+<div id="right-strip">
+    <div class="rs-item">
+        <div class="rs-bar"><div class="rs-bar-fill" id="rs-bass"></div></div>
+        <span class="rs-label">Bass</span>
     </div>
-
-    <div id="playback-status">No file loaded.</div>
+    <div class="rs-divider"></div>
+    <div class="rs-item">
+        <div class="rs-bar"><div class="rs-bar-fill" id="rs-mid"></div></div>
+        <span class="rs-label">Mid</span>
+    </div>
+    <div class="rs-divider"></div>
+    <div class="rs-item">
+        <div class="rs-bar"><div class="rs-bar-fill" id="rs-beat"></div></div>
+        <span class="rs-label">Beat</span>
+    </div>
 </div>
 
+<!-- ══ SIDE PANEL ══ -->
+<div id="side-panel">
+    <div class="panel-label">Now Playing</div>
+
+    <div id="np-block">
+        <div id="np-beat-row">
+            <div id="beat-dot"></div>
+            <span id="np-bpm"></span>
+        </div>
+        <div id="np-title" style="color:var(--text-muted)">No file loaded</div>
+        <div id="np-artist"></div>
+        <div id="np-tags"></div>
+    </div>
+
+    <div class="panel-label">Metadata</div>
+
+    <div class="meta-fields">
+        <div class="mf">
+            <label>Title</label>
+            <input type="text" id="meta-title" placeholder="Track title">
+        </div>
+        <div class="mf">
+            <label>Artist</label>
+            <input type="text" id="meta-artist" placeholder="Artist name">
+        </div>
+        <div class="mf-row">
+            <div class="mf"><label>BPM</label><input type="number" id="meta-bpm" placeholder="120" min="1"></div>
+            <div class="mf"><label>Key</label><input type="text" id="meta-key" placeholder="Am"></div>
+        </div>
+        <div class="mf-row">
+            <div class="mf"><label>Genre</label><input type="text" id="meta-genre" placeholder="Genre"></div>
+            <div class="mf"><label>Offset (s)</label><input type="number" id="meta-offset" placeholder="0" step="0.1" min="0"></div>
+        </div>
+    </div>
+
+    <button id="save-meta-btn">SAVE METADATA</button>
+</div>
+
+<!-- ══ BOTTOM BAR ══ -->
+<div id="bottom-bar">
+    <div class="bar-top">
+        <label id="file-pick-btn">
+            LOAD FILE
+            <input type="file" id="audio-file" accept="audio/*">
+        </label>
+
+        <button id="play-pause-btn" disabled>
+            <svg id="icon-play"  viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>
+        </button>
+
+        <div id="bar-title"><span style="color:var(--text-muted)">No file loaded</span></div>
+        <div id="bar-time-display">0:00 / 0:00</div>
+    </div>
+
+    <div class="bar-seek">
+        <span class="tlbl" id="time-current">0:00</span>
+        <input type="range" id="seek-bar" min="0" max="100" step="0.1" value="0" disabled>
+        <span class="tlbl" id="time-total">0:00</span>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ENGINE + CONTROLLER
+════════════════════════════════════════════════════════════ -->
 <script src="../AudioEngine.js"></script>
+<script src="../AudioController.js"></script>
 <script>
-    const engine = new AudioEngine();
+'use strict';
 
-    const fileInput = document.getElementById('audio-file');
-    const playBtn = document.getElementById('play-btn');
-    const pauseBtn = document.getElementById('pause-btn');
-    const statusDiv = document.getElementById('playback-status');
+const engine     = new AudioEngine();
+const controller = new AudioController(engine);
 
-    fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        engine.setAudioSource(file, { title: file.name });
-        playBtn.disabled = false;
-        pauseBtn.disabled = false;
-        statusDiv.textContent = 'Loaded: ' + file.name;
+/* ── Animation state ── */
+let beatVal   = 0;
+let isPlaying = false;
+
+/* ── VU bar loop (runs independently, no Three.js needed) ── */
+const rsBass = document.getElementById('rs-bass');
+const rsMid  = document.getElementById('rs-mid');
+const rsBeat = document.getElementById('rs-beat');
+
+function vuLoop() {
+    requestAnimationFrame(vuLoop);
+    let bass = 0, mid = 0;
+    if (isPlaying) {
+        const bm = engine.getBassAndMid();
+        if (bm) { bass = bm.bass; mid = bm.mid; }
+    }
+    beatVal = Math.max(0, beatVal - 0.038);
+    if (rsBass) rsBass.style.height = Math.round(bass  * 100) + '%';
+    if (rsMid)  rsMid.style.height  = Math.round(mid   * 100) + '%';
+    if (rsBeat) rsBeat.style.height = Math.round(beatVal * 100) + '%';
+}
+vuLoop();
+
+/* ══════════════════════════════════════════════════
+   SPECTRUM CANVAS
+══════════════════════════════════════════════════ */
+const specCanvas = document.getElementById('spectrum-canvas');
+const specCtx    = specCanvas.getContext('2d');
+let specRunning  = false;
+
+function resizeSpec() {
+    specCanvas.width  = Math.round(specCanvas.offsetWidth  * window.devicePixelRatio) || 580;
+    specCanvas.height = Math.round(specCanvas.offsetHeight * window.devicePixelRatio) || 56;
+}
+
+function drawSpec() {
+    if (!specRunning) return;
+    requestAnimationFrame(drawSpec);
+    const data = engine.getAnalysisData();
+    const W = specCanvas.width, H = specCanvas.height;
+    specCtx.clearRect(0, 0, W, H);
+    if (!data) return;
+    const bins = data.bufferLength;
+    const bw   = Math.max(1.5, W / bins - 0.8);
+    for (let i = 0; i < bins; i++) {
+        const ratio = data.frequencyData[i] / 255;
+        const bh    = Math.max(ratio * H, 1);
+        const x     = i * (bw + 0.8);
+        const g     = specCtx.createLinearGradient(0, H, 0, H - bh);
+        g.addColorStop(0,   'rgba(59,45,255,0.55)');
+        g.addColorStop(0.5, 'rgba(0,150,230,0.7)');
+        g.addColorStop(1,   'rgba(0,200,255,0.95)');
+        specCtx.fillStyle = g;
+        specCtx.beginPath();
+        specCtx.roundRect(x, H - bh, bw, bh, 1);
+        specCtx.fill();
+    }
+}
+
+function startSpectrum() {
+    if (specRunning) return;
+    specRunning = true;
+    resizeSpec();
+    drawSpec();
+}
+
+/* ══════════════════════════════════════════════════
+   WAVESURFER
+══════════════════════════════════════════════════ */
+const wavesurfer = WaveSurfer.create({
+    container: '#waveform-wrap',
+    waveColor:     'rgba(0,200,255,0.22)',
+    progressColor: 'rgba(0,200,255,0.6)',
+    cursorColor:   'rgba(0,200,255,0.85)',
+    height: 32,
+    normalize: true,
+    interact: false,
+    barWidth: 2,
+    barGap: 1,
+    barRadius: 2,
+    media: engine.getMediaElement(),
+});
+
+/* ══════════════════════════════════════════════════
+   UI REFS
+══════════════════════════════════════════════════ */
+const fileInput   = document.getElementById('audio-file');
+const filePickBtn = document.getElementById('file-pick-btn');
+const ppBtn       = document.getElementById('play-pause-btn');
+const iconPlay    = document.getElementById('icon-play');
+const iconPause   = document.getElementById('icon-pause');
+const seekBar     = document.getElementById('seek-bar');
+const timeCur     = document.getElementById('time-current');
+const timeTot     = document.getElementById('time-total');
+const timeDisp    = document.getElementById('bar-time-display');
+const barTitle    = document.getElementById('bar-title');
+const beatDot     = document.getElementById('beat-dot');
+const hintText    = document.getElementById('hint-text');
+const npTitle     = document.getElementById('np-title');
+const npArtist    = document.getElementById('np-artist');
+const npBpm       = document.getElementById('np-bpm');
+const npTags      = document.getElementById('np-tags');
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+function fmtTime(s) {
+    if (!s || isNaN(s)) return '0:00';
+    return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2,'0')}`;
+}
+
+function updateNowPlaying() {
+    const m = controller.getMetadata() || {};
+    npTitle.textContent  = m.title  || 'Unknown Track';
+    npTitle.style.color  = m.title  ? '' : 'var(--text-muted)';
+    npArtist.textContent = m.artist || '';
+    npBpm.textContent    = m.bpm    ? m.bpm + ' BPM' : '';
+
+    npTags.innerHTML = '';
+    if (m.key)   { const t = document.createElement('span'); t.className='tag'; t.textContent=m.key;   npTags.appendChild(t); }
+    if (m.genre) { const t = document.createElement('span'); t.className='tag'; t.textContent=m.genre; npTags.appendChild(t); }
+
+    barTitle.innerHTML = m.title
+        ? `<strong>${m.title}</strong>${m.artist ? ' <span style="color:var(--text-muted)">—</span> ' + m.artist : ''}`
+        : '<span style="color:var(--text-muted)">No file loaded</span>';
+}
+
+function setPlaying(playing) {
+    isPlaying = playing;
+    iconPlay.style.display  = playing ? 'none' : 'block';
+    iconPause.style.display = playing ? 'block' : 'none';
+}
+
+/* ══════════════════════════════════════════════════
+   FILE LOAD
+══════════════════════════════════════════════════ */
+/* file input triggered natively via <label for="audio-file"> */
+
+fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    controller.loadAudio(file);
+    const cleanName = file.name.replace(/\.[^/.]+$/, '');
+    controller.attachMetadata({ title: cleanName });
+    wavesurfer.load(URL.createObjectURL(file));
+    document.getElementById('meta-title').value = cleanName;
+
+    ppBtn.disabled    = false;
+    seekBar.disabled  = false;
+    hintText.style.opacity = '0';
+    updateNowPlaying();
+});
+
+/* ══════════════════════════════════════════════════
+   PLAY / PAUSE
+══════════════════════════════════════════════════ */
+let stopBeat = null;
+
+function startBeatListener() {
+    if (stopBeat) stopBeat();
+    stopBeat = controller.onBeat(() => {
+        beatVal = 1;
+        beatDot.classList.add('pulse');
+        setTimeout(() => beatDot.classList.remove('pulse'), 75);
     });
+}
 
-    playBtn.addEventListener('click', () => {
-        engine.play();
-    });
+ppBtn.addEventListener('click', () => {
+    const st = controller.getState();
+    if (st.playing) {
+        controller.pause();
+        setPlaying(false);
+    } else {
+        controller.play();
+        setPlaying(true);
+        startSpectrum();
+        startBeatListener();
+    }
+});
 
-    pauseBtn.addEventListener('click', () => {
-        engine.pause();
-    });
+/* ══════════════════════════════════════════════════
+   SEEK
+══════════════════════════════════════════════════ */
+let seeking = false;
+seekBar.addEventListener('mousedown',  () => seeking = true);
+seekBar.addEventListener('touchstart', () => seeking = true);
+seekBar.addEventListener('input', () => {
+    const st = controller.getState();
+    if (st.duration) timeCur.textContent = fmtTime((seekBar.value / 100) * st.duration);
+});
+seekBar.addEventListener('change', () => {
+    const st = controller.getState();
+    if (st.duration) controller.seek((seekBar.value / 100) * st.duration);
+    seeking = false;
+});
 
-    setInterval(() => {
-        const state = engine.getPlaybackState();
-        if (!state.duration) return;
-        const current = state.currentTime.toFixed(1);
-        const total = state.duration.toFixed(1);
-        const status = state.playing ? 'Playing' : 'Paused';
-        statusDiv.textContent = status + ' — ' + current + 's / ' + total + 's';
-    }, 1000);
+/* ══════════════════════════════════════════════════
+   METADATA SAVE
+══════════════════════════════════════════════════ */
+document.getElementById('save-meta-btn').addEventListener('click', () => {
+    const bpm = parseFloat(document.getElementById('meta-bpm').value);
+    const off = parseFloat(document.getElementById('meta-offset').value);
+    const meta = {
+        title:  document.getElementById('meta-title').value  || undefined,
+        artist: document.getElementById('meta-artist').value || undefined,
+        bpm:    isNaN(bpm) ? undefined : bpm,
+        key:    document.getElementById('meta-key').value    || undefined,
+        genre:  document.getElementById('meta-genre').value  || undefined,
+        offset: isNaN(off) ? 0 : off,
+    };
+    controller.attachMetadata(meta);
+    if (meta.bpm && controller.getState().playing) startBeatListener();
+    updateNowPlaying();
+
+    const btn = document.getElementById('save-meta-btn');
+    btn.textContent = 'SAVED';
+    btn.style.color = '#00ff99';
+    btn.style.borderColor = 'rgba(0,255,150,0.4)';
+    setTimeout(() => {
+        btn.textContent = 'SAVE METADATA';
+        btn.style.color = ''; btn.style.borderColor = '';
+    }, 1400);
+});
+
+/* ══════════════════════════════════════════════════
+   PLAYBACK POLL
+══════════════════════════════════════════════════ */
+setInterval(() => {
+    const st = controller.getState();
+    if (!st.duration) return;
+    setPlaying(st.playing);
+    timeTot.textContent  = fmtTime(st.duration);
+    timeDisp.textContent = fmtTime(st.currentTime) + ' / ' + fmtTime(st.duration);
+    if (!seeking) {
+        seekBar.value       = (st.currentTime / st.duration) * 100;
+        timeCur.textContent = fmtTime(st.currentTime);
+    }
+}, 250);
+
+/* ══════════════════════════════════════════════════
+   INIT RESIZE
+══════════════════════════════════════════════════ */
+window.addEventListener('load',   () => { resizeSpec(); });
+window.addEventListener('resize', () => { resizeSpec(); });
 </script>
-
 </body>
 </html>
