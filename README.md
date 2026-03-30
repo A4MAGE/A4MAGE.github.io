@@ -36,5 +36,4 @@ MAGEPlatform/
 ---
 
 ## Notes
-- For audio feature details, see [`audio/README.md`](audio/README.md)
 - Each folder is self-contained — work within your own folder and open a PR when ready
