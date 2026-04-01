@@ -1,7 +1,20 @@
+.rubik-puddles-regular {
+  font-family: "Rubik Puddles", system-ui;
+  font-weight: 400;
+  font-style: normal;
+}
+
 :root {
   --fontcolor: #FFFBDB;
-  --fontglow: rgba(255, 251, 219, 0.3)
+  --highlight-font: rgba(161, 250, 255);
+  --fontglow: rgba(255, 251, 219, 0.3);
 }
+
+.page {
+  animation: fadeIn 0.3s ease;
+}
+
+/* HOME PAGE */ 
 
 .main-header {
   display: flex;
@@ -17,7 +30,7 @@
   color: var(--fontcolor);
   font-size: 12em;
   align-content: center;
-  font-family: 'Michroma';
+  font-family: 'Rubik Puddles';
   display: flex;
   justify-content: center;
   margin: 0;
@@ -36,18 +49,137 @@
   font-size: 1.3em;
 }
 
-/* Navbar */ 
+/* EXPLORE PAGE */ 
+/* Formatting */ 
+.page-header {
+  color: var(--fontcolor);
+  font-family: Helvetica;
+  text-align: center;
+  margin-top: 120px;
+}
+
+.carousel-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Item Carousel */ 
+.carousel-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.embla { 
+  overflow: hidden; 
+}
+
+.embla__container { 
+  display: flex; 
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.embla__slide { 
+  flex: 0 0 18%; 
+}
+
+.embla__slide {
+  flex: 0 0 400px;
+  height: 330px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Button */ 
+.carousel-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: var(--fontcolor);
+  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.carousel-btn:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.embla {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 15%,
+    black 85%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 15%,
+    black 85%,
+    transparent 100%
+  );
+}
+
+/* NAVBAR */
 .nav {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: fit-content;
+  min-width: 600px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 20px;
   box-sizing: border-box;
   z-index: 100;
+
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(70px) saturate(180%);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.nav .list ul {
+  display: flex;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav .list a {
+  text-decoration: none;
+  font-family: Helvetica;
+  color: var(--fontcolor);
+  padding: 4px 12px;
+  border-radius: 999px;
+  display: inline-block;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.nav .list a:hover {
+  transform: scale(1.12);
+  color: var(--highlight-font);
 }
 
 .mage-icon img {
@@ -55,26 +187,13 @@
   height: auto;
 }
 
-.list ul {
-  display: flex;
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-  gap: 10px;
-}
-
-.list ul li a {
-  color: var(--fontcolor);
-  font-family: Helvetica;
-  text-decoration: none;
-  padding: 8px 16px;
-}
-
 .login-btn a {
   font-family: Helvetica;
   text-decoration: none;
   color: var(--fontcolor);
-}
+} 
+
+/* NAVBAR */ 
 
 /* No select */ 
 .noselect {
@@ -86,10 +205,16 @@
   user-select: none; 
 }
 
-/* Animations */ 
+/* ANIMATIONS */ 
 
 /* Title */ 
 @keyframes glow-pulse {
   0%, 100% { text-shadow: 0 0 10px var(--fontglow), 0 0 20px var(--fontglow); }
   50%       { text-shadow: 0 0 40px var(--fontglow), 0 0 80px var(--fontglow), 0 0 120px var(--fontglow); }
+}
+
+/* Page Fade in */ 
+@keyframes fadeIn {
+  from { opacity: 0; translate: 0 10px; }
+  to { opacity: 1; translate: 0 0; }
 }
