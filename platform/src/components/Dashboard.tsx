@@ -6,6 +6,7 @@ import { supabase } from "../supabaseClient";
 // @ts-ignore
 import Search from "@search/search-bar-main";
 
+
 const Dashboard = () => {
   const { session, signOut } = UserAuth();
   const [presetPath, setPresetPath] = useState("");
