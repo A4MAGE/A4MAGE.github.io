@@ -29,15 +29,11 @@ const SignupForm = ({ setSignupSuccess }: { setSignupSuccess: (state: boolean) =
 
   return (
     <>
-      <p className="mage-eyebrow">
-        <span className="mage-eyebrow__num">01</span>
-        New Account
-      </p>
+      <p className="mage-eyebrow">Create account</p>
 
       <form className="mage-form" onSubmit={handleSignUp} noValidate>
         <div className="mage-field">
           <label className="mage-field__label" htmlFor="signup-email">
-            <span className="mage-field__num">01</span>
             Email
           </label>
           <input
@@ -54,7 +50,6 @@ const SignupForm = ({ setSignupSuccess }: { setSignupSuccess: (state: boolean) =
 
         <div className="mage-field">
           <label className="mage-field__label" htmlFor="signup-password">
-            <span className="mage-field__num">02</span>
             Password
           </label>
           <input

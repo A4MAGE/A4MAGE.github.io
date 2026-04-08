@@ -25,3 +25,8 @@ TODO.md
 
 # Local session scratchpad (picks up across restarts, not for team)
 NEXTSTEPS.md
+
+# Personal drafts (emails, notes, class reports) — never for team
+email.md
+*.draft.md
+R*.txt
