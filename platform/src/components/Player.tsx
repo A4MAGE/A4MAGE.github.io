@@ -4,7 +4,7 @@ import PresetPreviews from "./PresetPreviews";
 import { useEffect, useRef, useState } from "react";
 // @ts-ignore
 import Search from "@search/search-bar-main";
-
+import "./Player.css";
 
 const Player = () => {
   const { session, signOut } = UserAuth();
@@ -14,7 +14,6 @@ const Player = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
-  // Release the previous blob URL whenever audioSource changes or on unmount
   useEffect(() => {
     return () => {
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
@@ -22,13 +21,11 @@ const Player = () => {
   }, []);
 
   const handlePresetSelect = (item: any) => {
-    // Item could either be a raw json object or a item object with both scene data and audio source.
     if (item.scene_data) {
       setPreset(item.scene_data);
     } else {
       setPreset(item);
     }
-
     if (item.audioSource) setAudioSource(item.audioSource);
   };
 
@@ -46,14 +43,14 @@ const Player = () => {
 
   return (
     <div className="dashboard-container">
-      <div className="content-center-card">
+      <div className="content-center-card player-card">
         <h1>Player</h1>
-        <h2>Welcome, {session?.user?.email}</h2>
-        <div onClick={signOut}>
-          <button className="link-button">Sign Out</button>
-        </div>
+        <p className="player-welcome">Signed in as {session?.user?.email}</p>
+
         {/*  @ts-ignore */}
         <Search onSelect={handlePresetSelect} />
+
+        <div className="player-divider" />
 
         <input
           ref={fileInputRef}
@@ -61,15 +58,26 @@ const Player = () => {
           accept="audio/*"
           style={{ display: "none" }}
           onChange={handleAudioFileChange}
+          aria-label="Pick audio file"
         />
         <button
-          className="link-button"
+          type="button"
+          className="player-audio-button"
           onClick={() => fileInputRef.current?.click()}
         >
-          {audioFileName ? `Audio: ${audioFileName}` : "Pick audio file"}
+          <span className="player-audio-label">
+            {audioFileName ? "Audio file" : "Audio"}
+          </span>
+          <span className="player-audio-filename">
+            {audioFileName || "Pick an audio file…"}
+          </span>
         </button>
 
         <EnginePlayer preset={preset} audioSource={audioSource} />
+
+        <button type="button" className="player-signout" onClick={signOut}>
+          Sign Out
+        </button>
       </div>
       <PresetPreviews onSelect={handlePresetSelect} />
     </div>

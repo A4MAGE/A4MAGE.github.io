@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { UserAuth } from "../context/AuthContext";
 import { supabase } from "../supabaseClient";
+import "./Profile.css";
 
 type Preset = {
   id: number;
@@ -34,43 +35,38 @@ const Profile = () => {
   }, [userId]);
 
   const username = presets[0]?.username ?? email.split("@")[0];
+  const presetCount = presets.length;
 
   return (
     <div className="dashboard-container">
-      <div className="content-center-card">
+      <div className="content-center-card profile-card">
         <h1>Profile</h1>
-        <h2>{username}</h2>
-        <p style={{ color: "rgba(255,255,255,0.6)", margin: 0 }}>{email}</p>
-
-        <div className="account-controls">
-          <span>{presets.length} preset{presets.length === 1 ? "" : "s"}</span>
-        </div>
-
-        <button className="link-button" onClick={signOut}>
+        <p className="profile-username">{username}</p>
+        <p className="profile-email">{email}</p>
+        <p className="profile-stat">
+          {presetCount} preset{presetCount === 1 ? "" : "s"}
+        </p>
+        <button
+          className="link-button profile-signout"
+          onClick={signOut}
+          type="button"
+        >
           Sign Out
         </button>
       </div>
 
-      <div className="content-center-card" style={{ minWidth: "280px" }}>
-        <h2 style={{ margin: 0 }}>My Presets</h2>
+      <div className="content-center-card profile-presets">
+        <h2>My Presets</h2>
         {loading ? (
-          <p>Loading…</p>
-        ) : presets.length === 0 ? (
-          <p style={{ color: "rgba(255,255,255,0.6)" }}>
+          <p className="profile-presets-empty">Loading…</p>
+        ) : presetCount === 0 ? (
+          <p className="profile-presets-empty">
             No presets yet. Create one from the Player page.
           </p>
         ) : (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, width: "100%" }}>
+          <ul className="profile-presets-list">
             {presets.map((p) => (
-              <li
-                key={p.id}
-                style={{
-                  padding: "0.5rem 0.75rem",
-                  borderBottom: "1px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                {p.name}
-              </li>
+              <li key={p.id}>{p.name}</li>
             ))}
           </ul>
         )}
