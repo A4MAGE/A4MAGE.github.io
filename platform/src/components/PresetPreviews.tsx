@@ -1,7 +1,8 @@
-import "./PresetPreviews.css"
+import "./PresetPreviews.css";
+import { useState, useEffect } from "react";
 
-const PresetPreviews = ({ setPresetPath }: { setPresetPath: (preset: string) => void }) => {
-  const presets = [
+const PresetPreviews = ({ onSelect }: { onSelect: (preset: object) => void }) => {
+  const presetUrls = [
     "presets/preset0.v2.json",
     "presets/preset1.v2.json",
     "presets/preset2.v2.json",
@@ -15,17 +16,57 @@ const PresetPreviews = ({ setPresetPath }: { setPresetPath: (preset: string) => 
     "presets/preset10.v2.json",
   ];
 
+  const [presets, setPresets] = useState<object[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Get default preset data from public folder.
+  useEffect(() => {
+    const fetchPresets = async () => {
+      try {
+        const presetData = await Promise.all(
+          presetUrls.map(async (url) => {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load ${url}`);
+            return response.json();
+          }),
+        );
+        setPresets(presetData);
+        setLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load presets");
+        setLoading(false);
+      }
+    };
+
+    fetchPresets();
+  }, []);
+
+  if (loading)
+    return (
+      <div className="preset-previews">
+        <p>Loading presets...</p>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="preset-previews">
+        <p>Error: {error}</p>
+      </div>
+    );
+
   return (
     <div className="preset-previews">
+      <p>This is a Debug Preset selector</p>
       {presets.map((preset, index) => (
         <div key={index}>
           <button
             className="link-button"
             onClick={() => {
-              setPresetPath(preset);
+              onSelect(preset);
             }}
           >
-            {preset}
+            Preset {index}
           </button>
         </div>
       ))}

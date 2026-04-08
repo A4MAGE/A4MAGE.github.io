@@ -78,3 +78,9 @@ body {
   font-size: x-large;
   color: white;
 }
+
+.search-bar-container {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}

@@ -1,7 +1,6 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import Signup from "./components/authentication/Signup";
 import Signin from "./components/authentication/Signin";
-import Dashboard from "./components/Dashboard";
 import PrivateRoute from "./components/authentication/PrivateRoute";
 import Explore from "./components/Explore";
 import Player from "./components/Player";
@@ -35,7 +34,8 @@ export const router = createBrowserRouter([
           </PrivateRoute>
         ),
         children: [
-          { path: "/dashboard", element: <Dashboard /> },
+          // TODO: Update Dashboard with a proper dashboard component.
+          { path: "/dashboard", element: <Player /> },
           { path: "/explore", element: <Explore /> },
           { path: "/player", element: <Player /> },
           { path: "/my-presets", element: <MyPresets /> },

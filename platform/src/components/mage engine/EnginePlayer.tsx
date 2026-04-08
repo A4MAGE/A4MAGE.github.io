@@ -31,7 +31,7 @@ function loadMageEngine(): Promise<any> {
 type EnginePlayerProps = {
   width?: string;
   height?: string;
-  presetPath?: string;
+  preset?: string;
   displayControls?: boolean;
   audioSource?: string;
 };
@@ -40,7 +40,7 @@ const EnginePlayer = ({
   width = "500px",
   height = "250px",
   displayControls = false,
-  presetPath,
+  preset,
   audioSource,
 }: EnginePlayerProps) => {
   const canvasRef = useRef(null);
@@ -90,12 +90,11 @@ const EnginePlayer = ({
   }, [audioSource]);
 
   useEffect(() => {
-    if (presetPath) loadPreset(presetPath);
-  }, [presetPath]);
+    if (preset) loadPreset(preset);
+  }, [preset]);
 
-  const loadPreset = async (path: string) => {
+  const loadPreset = async (preset: any) => {
     if (!engine) return;
-    const preset = await fetch(path).then((r) => r.json());
     engine.loadPreset(preset);
     if (audioController) audioController.loadPreset(preset);
   };
