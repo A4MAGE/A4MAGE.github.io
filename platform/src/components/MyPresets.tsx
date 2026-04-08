@@ -1,19 +1,73 @@
+import { UserAuth } from "../context/AuthContext";
+import { supabase } from "../supabaseClient";
+import { useEffect, useState } from "react";
+
 const MyPresets = () => {
+  const [presets, setPresets] = useState<any[]>([]);
+  const { session } = UserAuth();
+  const userEmail = session?.user?.email;
+
+  useEffect(() => {
+    if (userEmail) {
+      const fetchPresets = async () => {
+        const { data, error } = await supabase
+          .from("preset")
+          .select("*")
+          .eq("author", userEmail);
+        if (!error && data) setPresets(data);
+      };
+      fetchPresets();
+    }
+  }, [userEmail]);
+
+  const handleDelete = async (id: number) => {
+    const { error } = await supabase.from("preset").delete().eq("id", id);
+    if (!error) {
+      setPresets(prev => prev.filter((p) => p.id !== id));
+    }
+  };
+
   return (
-    <div className="mage-page">
+    <main className="mage-page">
       <header className="mage-page__header">
         <div className="mage-page__title-group">
           <p className="mage-eyebrow">
-            <span className="mage-eyebrow__num">04</span>
-            My Presets
+            <span className="mage-eyebrow__num">{presets.length}</span> Presets Saved
           </p>
-          <h1 className="mage-title">Library</h1>
+          <h1 className="mage-title">My Presets</h1>
         </div>
       </header>
-      <p className="mage-body">
-        Gladys is building this — see issue #40.
-      </p>
-    </div>
+
+      <div className="mage-stack mage-stack--lg">
+        {presets.length > 0 ? (
+          <ul className="mage-preset-list">
+            {presets.map((p, index) => (
+              <li key={p.id} className="mage-preset-item">
+                <span className="mage-preset-list__num">
+                  {(index + 1).toString().padStart(2, '0')}
+                </span>
+                <div className="mage-preset-info">
+                  <span className="mage-preset-name">{p.name}</span>
+                  <span className="mage-tagline">TAG: <strong>{p.tag}</strong></span>
+                </div>
+                <button 
+                  className="mage-btn mage-btn--quiet delete-action" 
+                  onClick={() => handleDelete(p.id)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="mage-panel">
+            <p className="mage-preset-list__empty">
+              No presets found.
+            </p>
+          </div>
+        )}
+      </div>
+    </main>
   );
 };
 
