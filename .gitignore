@@ -22,3 +22,6 @@ TODO.md
 .claude/
 .cursor/
 .opencode/
+
+# Local session scratchpad (picks up across restarts, not for team)
+NEXTSTEPS.md
