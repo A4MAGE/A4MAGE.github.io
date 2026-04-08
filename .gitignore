@@ -17,3 +17,8 @@ TODO.md
 .env
 .env.*
 !.env.example
+
+# Claude Code / Impeccable skills — local tooling only
+.claude/
+.cursor/
+.opencode/
