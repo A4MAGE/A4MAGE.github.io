@@ -29,9 +29,10 @@
   --mage-radius-sm: 3px;
   --mage-radius-md: 6px;
 
-  --mage-font-display: "Michroma", "Anta", system-ui, sans-serif;
-  --mage-font-body: "Anta", "Michroma", system-ui, sans-serif;
+  --mage-font-display: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --mage-font-body: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
 }
+
 
 /* ---------- layout shell ---------- */
 
@@ -91,55 +92,42 @@
 /* ---------- typography ---------- */
 
 .mage-wordmark {
-  font-family: var(--mage-font-display);
-  font-size: clamp(3rem, 10vw, 6.5rem);
+  font-family: "Rubik Puddles", system-ui, sans-serif;
+  font-weight: 400;
+  font-size: clamp(4rem, 14vw, 9rem);
   line-height: 0.9;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--mage-cream);
   margin: 0;
   text-shadow:
-    0 0 14px rgba(255, 251, 219, 0.35),
-    0 0 32px rgba(255, 251, 219, 0.18);
+    0 0 10px var(--mage-cream),
+    0 0 20px var(--mage-cream),
+    0 0 40px var(--mage-cream);
 }
 
 .mage-tagline {
-  font-family: var(--mage-font-body);
-  font-size: 0.82rem;
-  line-height: 1.6;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--mage-cream-60);
+  font-family: "Georgia", serif;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--mage-cream);
   margin: 0;
-  max-width: 26ch;
+  max-width: 32ch;
 }
 
 .mage-tagline strong {
-  color: var(--mage-mint);
-  font-weight: 400;
+  color: var(--mage-cream);
+  font-weight: 600;
 }
 
 .mage-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
   font-family: var(--mage-font-body);
-  font-size: 0.68rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--mage-cream-60);
   margin: 0;
 }
 
-.mage-eyebrow::before {
-  content: "";
-  width: 1.25rem;
-  height: 1px;
-  background: var(--mage-mint);
-}
-
 .mage-eyebrow__num {
-  color: var(--mage-mint);
-  font-variant-numeric: tabular-nums;
+  display: none;
 }
 
 .mage-title {
@@ -189,21 +177,13 @@
 }
 
 .mage-field__label {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
   font-family: var(--mage-font-body);
-  font-size: 0.66rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  font-size: 0.8rem;
   color: var(--mage-cream-60);
 }
 
 .mage-field__num {
-  display: inline-block;
-  color: var(--mage-mint);
-  font-variant-numeric: tabular-nums;
-  min-width: 1.5rem;
+  display: none;
 }
 
 .mage-field input {
@@ -211,7 +191,7 @@
   background: transparent;
   border: none;
   border-bottom: 1px solid var(--mage-cream-20);
-  padding: 0.6rem 0 0.6rem 2.1rem;
+  padding: 0.6rem 0;
   font-family: var(--mage-font-body);
   font-size: 1rem;
   color: var(--mage-cream);
@@ -259,17 +239,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   width: 100%;
-  padding: 0.9rem 1.2rem;
+  padding: 0.85rem 1.2rem;
   background: transparent;
   color: var(--mage-cream);
   font-family: var(--mage-font-body);
-  font-size: 0.78rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  font-size: 0.92rem;
+  font-weight: 500;
   border: 1px solid var(--mage-cream-20);
-  border-radius: var(--mage-radius-sm);
+  border-radius: var(--mage-radius-md);
   cursor: pointer;
   transition: border-color 0.25s ease, color 0.25s ease,
     background 0.25s ease, box-shadow 0.25s ease;
@@ -294,16 +273,8 @@
 }
 
 .mage-btn--primary {
-  border-color: var(--mage-mint-60);
-  color: var(--mage-mint);
-  box-shadow: 0 0 20px -8px var(--mage-mint-30),
-    inset 0 0 0 0 var(--mage-mint-15);
-}
-
-.mage-btn--primary::after {
-  content: "→";
-  font-size: 0.9rem;
-  letter-spacing: 0;
+  border-color: var(--mage-cream-40);
+  color: var(--mage-cream);
 }
 
 .mage-btn--ghost {

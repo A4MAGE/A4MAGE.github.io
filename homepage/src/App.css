@@ -142,11 +142,10 @@
   left: 50%;
   transform: translateX(-50%);
   width: fit-content;
-  min-width: 600px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px;
+  gap: 1.25rem;
+  padding: 10px 18px;
   box-sizing: border-box;
   z-index: 100;
 
@@ -160,7 +159,7 @@
 
 .nav .list ul {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -173,29 +172,38 @@
   padding: 4px 12px;
   border-radius: 999px;
   display: inline-block;
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease;
 }
 
 .nav .list a:hover {
-  transform: scale(1.12);
   color: var(--highlight-font);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mage-icon {
+  display: flex;
+  align-items: center;
 }
 
 .mage-icon img {
-  width: 40px;
+  width: 36px;
   height: auto;
+  display: block;
 }
 
 .login-btn a {
   font-family: Helvetica;
   text-decoration: none;
   color: var(--fontcolor);
-  transition: transform 0.2s ease, color 0.2s ease;
-} 
+  padding: 4px 14px;
+  border-radius: 999px;
+  display: inline-block;
+  transition: color 0.2s ease, background 0.2s ease;
+}
 
 .login-btn a:hover {
-  transform: scale(1.12);
   color: var(--highlight-font);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* NAVBAR */ 

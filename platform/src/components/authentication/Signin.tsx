@@ -1,6 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
 import { UserAuth } from "../../context/AuthContext";
 import { useState } from "react";
+// @ts-ignore — shared homepage navbar
+import Navbar from "@homepage/components/Navbar";
+import "@homepage/App.css";
 
 const Signin = () => {
   const [loading, setLoading] = useState(false);
@@ -29,7 +32,9 @@ const Signin = () => {
   };
 
   return (
-    <div className="mage-shell">
+    <>
+      <Navbar />
+      <div className="mage-shell">
       <div className="mage-split">
         <div className="mage-split__brand">
           <h1 className="mage-wordmark">MAGE</h1>
@@ -40,15 +45,11 @@ const Signin = () => {
         </div>
 
         <div className="mage-split__form">
-          <p className="mage-eyebrow">
-            <span className="mage-eyebrow__num">01</span>
-            Sign In
-          </p>
+          <p className="mage-eyebrow">Sign in</p>
 
           <form className="mage-form" onSubmit={handleSignIn} noValidate>
             <div className="mage-field">
               <label className="mage-field__label" htmlFor="signin-email">
-                <span className="mage-field__num">01</span>
                 Email
               </label>
               <input
@@ -65,7 +66,6 @@ const Signin = () => {
 
             <div className="mage-field">
               <label className="mage-field__label" htmlFor="signin-password">
-                <span className="mage-field__num">02</span>
                 Password
               </label>
               <input
@@ -90,7 +90,7 @@ const Signin = () => {
               className="mage-btn mage-btn--primary"
               disabled={loading}
             >
-              {loading ? "Signing in…" : "Enter"}
+              {loading ? "Signing in…" : "Sign in"}
             </button>
           </form>
 
@@ -100,6 +100,7 @@ const Signin = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

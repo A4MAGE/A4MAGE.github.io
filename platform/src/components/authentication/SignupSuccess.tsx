@@ -3,10 +3,7 @@ import { Link } from "react-router-dom";
 const SignupSuccess = () => {
   return (
     <>
-      <p className="mage-eyebrow">
-        <span className="mage-eyebrow__num">02</span>
-        Account Created
-      </p>
+      <p className="mage-eyebrow">Account created</p>
       <h2 className="mage-title">Check your inbox</h2>
       <p className="mage-body">
         We sent a verification link to your email. Once you confirm, you can{" "}

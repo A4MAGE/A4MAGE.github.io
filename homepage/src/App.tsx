@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import Home from './pages/Home.tsx'
 import Explore from './pages/Explore.tsx'
 import Engine from './pages/Engine.tsx'
@@ -5,6 +6,16 @@ import Navbar from './components/Navbar.tsx'
 import Footer from './components/Footer.tsx'
 
 function App() {
+  useEffect(() => {
+    // Scroll to hash target on first mount (e.g. arriving from /signin → /#explore)
+    if (window.location.hash) {
+      const id = window.location.hash.slice(1)
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+      })
+    }
+  }, [])
+
   return (
     <>
       <Navbar />
