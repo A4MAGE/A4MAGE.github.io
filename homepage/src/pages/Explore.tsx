@@ -29,7 +29,7 @@ const sections = [
   },
   {
     label: "Built for the Drop",
-    accent: "#9B6BDB",
+    accent: "#A3E635",
     items: [
       { id: 0, name: "Seismic Wobble",    creator: "lowfreq_osc",  genre: "Dubstep",   downloads: "9.2k"  },
       { id: 1, name: "Void Walker",       creator: "dark_osc",     genre: "Dubstep",   downloads: "7.4k"  },
@@ -45,7 +45,7 @@ const sections = [
   },
   {
     label: "Synthwave Essentials",
-    accent: "#41C8F1",
+    accent: "#FACC15",
     items: [
       { id: 0, name: "Neon Drift",        creator: "synthkid",     genre: "Synthwave", downloads: "8.1k"  },
       { id: 1, name: "Midnight Signal",   creator: "phaseshift",   genre: "Synthwave", downloads: "6.3k"  },
@@ -61,7 +61,7 @@ const sections = [
   },
   {
     label: "Pop Ready",
-    accent: "#E861B7",
+    accent: "#F472B6",
     items: [
       { id: 0, name: "Chrome Pulse",      creator: "neural_waves", genre: "Pop",       downloads: "4.9k"  },
       { id: 1, name: "Analog Dream",      creator: "retro_vm",     genre: "Pop",       downloads: "4.1k"  },
@@ -77,7 +77,7 @@ const sections = [
   },
   {
     label: "Hip Hop Foundations",
-    accent: "#F0A04B",
+    accent: "#FB923C",
     items: [
       { id: 0, name: "Solar Flare",       creator: "heatwave",     genre: "Hip Hop",   downloads: "3.8k"  },
       { id: 1, name: "Dusty Sampler",     creator: "cratedigger",  genre: "Hip Hop",   downloads: "3.3k"  },
