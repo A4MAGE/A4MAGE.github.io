@@ -18,7 +18,7 @@ function Navbar() {
       if (!el) return null
       const obs = new IntersectionObserver(
         ([entry]) => { if (entry.isIntersecting) setActive(id) },
-        { threshold: 0.5 }
+        { rootMargin: '-40% 0px -40% 0px', threshold: 0 }
       )
       obs.observe(el)
       return obs
@@ -31,19 +31,30 @@ function Navbar() {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
     } else {
       navigate(`/#${id}`)
-      // after navigation, scroll to the section
       setTimeout(() => {
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
       }, 50)
     }
   }
 
+  const loginLabel = onAuthPage && location.pathname === '/signup' ? 'Log In'
+    : onAuthPage && location.pathname !== '/signup' ? 'Sign Up'
+    : 'Log In'
+  const loginTo = onAuthPage && location.pathname === '/signup' ? '/signin'
+    : onAuthPage && location.pathname !== '/signup' ? '/signup'
+    : '/signin'
+
   return (
     <>
+      {/* Logo — top left */}
+      <div className="nav-corner nav-corner--left">
+        <a onClick={() => goToSection('home')} style={{ cursor: 'pointer' }}>
+          <img src={Icon} className="mage-icon-img" />
+        </a>
+      </div>
+
+      {/* Nav links — centered pill */}
       <div className="nav">
-        <div className="mage-icon">
-          <Link to="/"><img src={Icon} /></Link>
-        </div>
         <div className="list">
           <ul>
             {sections.map(id => (
@@ -55,15 +66,17 @@ function Navbar() {
             ))}
           </ul>
         </div>
-        <div className="login-btn">
-          {onAuthPage && location.pathname === '/signup' ? (
-            <Link to="/signin">Log In</Link>
-          ) : onAuthPage && location.pathname !== '/signup' ? (
-            <Link to="/signup">Sign Up</Link>
-          ) : (
-            <Link to="/signin">Log In</Link>
-          )}
-        </div>
+      </div>
+
+      {/* Login — top right */}
+      <div className="nav-corner nav-corner--right">
+        <Link to={loginTo} className="login-btn-link">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+          {loginLabel}
+        </Link>
       </div>
     </>
   )
