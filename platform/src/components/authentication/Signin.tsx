@@ -1,8 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
 import { UserAuth } from "../../context/AuthContext";
 import { useState } from "react";
-// @ts-ignore — shared homepage navbar
+// @ts-ignore — shared homepage components
 import Navbar from "@homepage/components/Navbar";
+// @ts-ignore
+import SynthwaveBg from "@homepage/components/SynthwaveBg";
+// @ts-ignore
+import Footer from "@homepage/components/Footer";
 import "@homepage/App.css";
 
 const Signin = () => {
@@ -33,6 +37,7 @@ const Signin = () => {
 
   return (
     <>
+      <SynthwaveBg />
       <Navbar />
       <div className="mage-shell">
       <div className="mage-split">
@@ -100,6 +105,7 @@ const Signin = () => {
         </div>
       </div>
     </div>
+      <Footer />
     </>
   );
 };

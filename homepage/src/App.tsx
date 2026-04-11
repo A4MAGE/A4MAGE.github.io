@@ -4,6 +4,7 @@ import Explore from './pages/Explore.tsx'
 import Engine from './pages/Engine.tsx'
 import Navbar from './components/Navbar.tsx'
 import Footer from './components/Footer.tsx'
+import SynthwaveBg from './components/SynthwaveBg.tsx'
 
 function App() {
   useEffect(() => {
@@ -18,6 +19,7 @@ function App() {
 
   return (
     <>
+      <SynthwaveBg />
       <Navbar />
       <section id="home"><Home /></section>
       <section id="explore"><Explore /></section>
