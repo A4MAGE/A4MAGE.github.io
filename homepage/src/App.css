@@ -28,7 +28,7 @@
 /* Page Title */ 
 .main-header h1 {
   color: var(--fontcolor);
-  font-size: 12em;
+  font-size: 20em;
   align-content: center;
   font-family: 'Array', sans-serif;
   display: flex;

@@ -1,3 +1,12 @@
+@font-face {
+  font-family: 'Array';
+  src: url('./assets/FontshareKit-2604001496/Array/Fonts/WEB/fonts/Array-Regular.woff2') format('woff2'),
+       url('./assets/FontshareKit-2604001496/Array/Fonts/WEB/fonts/Array-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bgcol: rgba(25, 25, 26, 1);
   --grdcol1: rgba(118, 219, 202, 1); /* Cyan */
