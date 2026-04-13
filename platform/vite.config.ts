@@ -26,15 +26,39 @@ export default defineConfig({
     },
   },
   build: {
-    // shader-park (inside mage) builds GLSL via eval() on strings that
-    // reference identifiers like `input`, `sdBox`, `time`. esbuild's
-    // minifier mangles local variable names, which breaks those eval'd
-    // lookups — works in dev, ReferenceError in production build.
-    // terser with mangle:false preserves names but still removes dead code
-    // and whitespace, so the bundle stays small and shader-park survives.
+    // shader-park (inside mage) builds GLSL by running eval() on strings
+    // that reference identifiers like `input`, `sdBox`, `time` — those
+    // identifiers are defined as local functions inside sculptToGLSL.
+    //
+    // A bundler cannot see inside eval'd strings, so it thinks those
+    // locals are unused and either renames (mangle) or deletes (compress
+    // dead-code) them. Both break shader-park at runtime with
+    //   ReferenceError: input is not defined
+    // in the production build. Dev mode is fine because it skips minify.
+    //
+    // Fix: use terser with mangle OFF and compress's dead-code passes OFF
+    // so identifiers survive. Whitespace stripping and safe rewrites still
+    // run, so the bundle stays small enough for GitHub Pages.
+    // Rollup tree-shaking strips nested functions inside sculptToGLSL
+    // (input, input2D, test, noLighting, etc.) because their only callers
+    // live inside eval'd strings that the bundler cannot see. Without this,
+    // the production build crashes with ReferenceError: input is not defined
+    // on the Player page. Dev mode is unaffected because it skips bundling.
+    rollupOptions: {
+      treeshake: false,
+    },
+    // terser with mangle + compress's dead-code passes OFF so anything that
+    // survives tree-shake-off also survives minification. Identifiers are
+    // still referenced by name inside eval'd strings at runtime.
     minify: 'terser',
     terserOptions: {
       mangle: false,
+      compress: {
+        unused: false,
+        dead_code: false,
+        reduce_vars: false,
+        collapse_vars: false,
+      },
     },
   },
   optimizeDeps: {
