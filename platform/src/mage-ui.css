@@ -688,3 +688,174 @@
 .mage-audio-picker__name--empty {
   color: var(--mage-cream-40);
 }
+
+/* ---------- profile (no card, just content) ---------- */
+
+.mage-profile {
+  margin-top: clamp(1.5rem, 4vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.75rem;
+  max-width: 520px;
+}
+
+.mage-profile__signout {
+  margin-top: 0.5rem;
+}
+
+.mage-profile__error {
+  margin: 0;
+  color: var(--mage-magenta);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+}
+
+.mage-avatar--button {
+  position: relative;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.mage-avatar--button:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow:
+    0 0 0 1px var(--mage-cream-20),
+    0 0 50px -4px var(--mage-mint-30),
+    inset 0 0 0 6px var(--mage-ink-strong);
+}
+
+.mage-avatar--button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.mage-avatar__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.mage-avatar__initial {
+  position: relative;
+  z-index: 1;
+}
+
+.mage-avatar__overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 0.35rem 0;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--mage-cream);
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  z-index: 2;
+}
+
+.mage-avatar--button:hover .mage-avatar__overlay,
+.mage-avatar--button:focus-visible .mage-avatar__overlay,
+.mage-avatar--button:disabled .mage-avatar__overlay {
+  opacity: 1;
+}
+
+.mage-identity__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mage-identity__edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mage-input {
+  background: var(--mage-cream-05);
+  border: 1px solid var(--mage-cream-20);
+  border-radius: var(--mage-radius-sm);
+  color: var(--mage-cream);
+  font-family: var(--mage-font-body);
+  font-size: 1rem;
+  padding: 0.55rem 0.8rem;
+  outline: none;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.mage-input:focus {
+  border-color: var(--mage-mint-60);
+  background: var(--mage-cream-10);
+}
+
+.mage-btn--tiny {
+  font-size: 0.65rem !important;
+  padding: 0.3rem 0.65rem !important;
+  letter-spacing: 0.12em;
+}
+
+.mage-avatar {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--mage-font-display);
+  font-size: 2.75rem;
+  font-weight: 300;
+  color: var(--mage-cream);
+  letter-spacing: 0.02em;
+  background:
+    conic-gradient(
+      from 140deg,
+      var(--mage-mint) 0deg,
+      var(--mage-ice) 120deg,
+      var(--mage-magenta) 240deg,
+      var(--mage-mint) 360deg
+    );
+  box-shadow:
+    0 0 0 1px var(--mage-cream-20),
+    0 0 40px -6px var(--mage-mint-30),
+    inset 0 0 0 6px var(--mage-ink-strong);
+  margin-bottom: 0.25rem;
+  user-select: none;
+}
+
+.mage-profile-meta {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mage-profile-meta > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mage-profile-meta dt {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mage-cream-40);
+}
+
+.mage-profile-meta dd {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--mage-cream-90);
+}
+
