@@ -1,40 +1,141 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UserAuth } from "../context/AuthContext";
 import { supabase } from "../supabaseClient";
 
-type Preset = {
-  id: number;
-  name: string;
-  description?: string;
-  likes?: number;
-  username?: string;
+type ProfileRow = {
+  user_id: string;
+  username: string | null;
+  avatar_url: string | null;
 };
 
 const Profile = () => {
   const { session, signOut } = UserAuth();
-  const [presets, setPresets] = useState<Preset[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const userId = session?.user?.id;
-  const email = session?.user?.email;
+  const email = session?.user?.email ?? "";
+  const createdAt = session?.user?.created_at;
+
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!supabase || !userId) {
       setLoading(false);
       return;
     }
-    supabase
-      .from("preset_with_username")
-      .select("*")
-      .eq("user_id", userId)
-      .then(({ data, error }: { data: any; error: any }) => {
-        if (!error && data) setPresets(data);
-        setLoading(false);
-      });
-  }, [userId]);
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("profile")
+        .select("user_id, username, avatar_url")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        setError(error.message);
+      } else if (data) {
+        setProfile(data as ProfileRow);
+        setNameDraft((data as ProfileRow).username ?? "");
+      } else {
+        const fallback: ProfileRow = {
+          user_id: userId,
+          username: email ? email.split("@")[0] : null,
+          avatar_url: null,
+        };
+        setProfile(fallback);
+        setNameDraft(fallback.username ?? "");
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, email]);
 
-  const username = presets[0]?.username ?? email.split("@")[0];
-  const presetCount = presets.length;
+  const displayName =
+    profile?.username?.trim() || (email ? email.split("@")[0] : "guest");
+  const initial = (displayName[0] ?? "?").toUpperCase();
+  const memberSince = createdAt
+    ? new Date(createdAt).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "—";
+
+  const saveUsername = async () => {
+    if (!supabase || !userId) return;
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      setError("Username can't be empty.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const { error } = await supabase
+      .from("profile")
+      .upsert(
+        { user_id: userId, username: trimmed },
+        { onConflict: "user_id" },
+      );
+    setSaving(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setProfile((p) => (p ? { ...p, username: trimmed } : p));
+    setEditingName(false);
+  };
+
+  const onAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !supabase || !userId) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Avatar must be an image.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Avatar must be under 2 MB.");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+
+    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+    const path = `${userId}/avatar.${ext}`;
+
+    const { error: upErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (upErr) {
+      setUploading(false);
+      setError(upErr.message);
+      return;
+    }
+
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    const cacheBusted = `${pub.publicUrl}?t=${Date.now()}`;
+
+    const { error: dbErr } = await supabase
+      .from("profile")
+      .upsert(
+        { user_id: userId, avatar_url: cacheBusted },
+        { onConflict: "user_id" },
+      );
+    setUploading(false);
+    if (dbErr) {
+      setError(dbErr.message);
+      return;
+    }
+    setProfile((p) => (p ? { ...p, avatar_url: cacheBusted } : p));
+  };
 
   return (
     <div className="mage-page">
@@ -46,54 +147,104 @@ const Profile = () => {
           </p>
           <h1 className="mage-title">Account</h1>
         </div>
-        <button
-          type="button"
-          className="mage-btn mage-btn--quiet"
-          onClick={signOut}
-        >
-          Sign Out
-        </button>
       </header>
 
-      <div className="mage-grid-2">
-        <div className="mage-stack mage-stack--lg">
+      {loading ? (
+        <p className="mage-preset-list__empty">Loading…</p>
+      ) : (
+        <div className="mage-profile">
+          <button
+            type="button"
+            className="mage-avatar mage-avatar--button"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="Upload avatar"
+            disabled={uploading}
+          >
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt=""
+                className="mage-avatar__img"
+              />
+            ) : (
+              <span className="mage-avatar__initial">{initial}</span>
+            )}
+            <span className="mage-avatar__overlay">
+              {uploading ? "Uploading…" : "Change"}
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={onAvatarFile}
+          />
+
           <div className="mage-identity">
-            <h2 className="mage-identity__name">{username}</h2>
+            {editingName ? (
+              <div className="mage-identity__edit">
+                <input
+                  type="text"
+                  className="mage-input"
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  maxLength={32}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  className="mage-btn mage-btn--primary"
+                  onClick={saveUsername}
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  className="mage-btn mage-btn--quiet"
+                  onClick={() => {
+                    setEditingName(false);
+                    setNameDraft(profile?.username ?? "");
+                    setError(null);
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="mage-identity__row">
+                <h2 className="mage-identity__name">{displayName}</h2>
+                <button
+                  type="button"
+                  className="mage-btn mage-btn--quiet mage-btn--tiny"
+                  onClick={() => setEditingName(true)}
+                >
+                  Edit
+                </button>
+              </div>
+            )}
             <p className="mage-identity__email">{email}</p>
           </div>
-          <div>
-            <p className="mage-eyebrow">
-              <span className="mage-eyebrow__num">{presetCount.toString().padStart(2, "0")}</span>
-              Presets Created
-            </p>
-          </div>
-        </div>
 
-        <div className="mage-stack">
-          <p className="mage-eyebrow">
-            <span className="mage-eyebrow__num">02</span>
-            My Presets
-          </p>
-          {loading ? (
-            <p className="mage-preset-list__empty">Loading…</p>
-          ) : presetCount === 0 ? (
-            <p className="mage-preset-list__empty">
-              No presets yet. Create one from the Player page.
-            </p>
-          ) : (
-            <ul className="mage-preset-list">
-              {presets.map((p, i) => (
-                <li key={p.id}>
-                  <span className="mage-preset-list__num">
-                    {(i + 1).toString().padStart(2, "0")}
-                  </span>
-                  <span>{p.name}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <dl className="mage-profile-meta">
+            <div>
+              <dt>Member since</dt>
+              <dd>{memberSince}</dd>
+            </div>
+          </dl>
+
+          {error && <p className="mage-profile__error">{error}</p>}
+
+          <button
+            type="button"
+            className="mage-btn mage-btn--quiet mage-profile__signout"
+            onClick={signOut}
+          >
+            Sign Out
+          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 };
