@@ -78,7 +78,6 @@ const MyPresets = () => {
                 )}
                 <div className="mage-preset-info">
                   <span className="mage-preset-name">{p.name}</span>
-                  <span className="mage-tagline">TAG: <strong>{p.tag}</strong></span>
                 </div>
                 <button 
                   className="mage-btn mage-btn--quiet delete-action" 
