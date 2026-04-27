@@ -14,6 +14,8 @@ const PresetPreviews = ({ onSelect }: { onSelect: (preset: object) => void }) =>
     "presets/preset8.v2.json",
     "presets/preset9.v2.json",
     "presets/preset10.v2.json",
+    "presets/preset11.v2.json",
+    "presets/preset12.v2.json"
   ];
 
   const [presets, setPresets] = useState<object[]>([]);
