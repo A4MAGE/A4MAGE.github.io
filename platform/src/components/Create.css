@@ -1,0 +1,65 @@
+/* Hide the default preset selection as we have our own implemented already. */
+.mage-embedded-presets {
+  display: none !important;
+}
+
+.mage-create-controls {
+  display: flex;
+  justify-content: center;
+}
+
+.mage-create-docks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 915px) {
+  .mage-create-docks {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mage-create-dock-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.mage-create-dock-target {
+  min-height: 12rem;
+  overflow: auto;
+}
+
+/* First select the parent target container to ensure the css is being applied on correct div */
+.mage-create-dock-target > .mage-fx-studio-dock,
+.mage-create-dock-target > .mage-scene-camera-dock {
+  position: static !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  max-width: 100%;
+  margin: 0;
+}
+
+/* Removes max height on both panels */
+.mage-create-dock-target > .mage-fx-studio-dock > div,
+.mage-create-dock-target > .mage-scene-camera-dock > div {
+  max-height: none !important;
+}
+/* TODO: Remove these when shader bugs are fixed. Brandon is aware that these shaders generate errors. For now, disable them on the frontend */
+div[data-layer-id="toonShader"],
+div[data-layer-id="copyShader"] {
+  display: none !important;
+}
+
+/* TODO: Remove this when above shader bug is fixed. This disables the randomize settings button. */
+/* While we can disable the two above shaders in the frontend, we cannot disable them from the randomize function so disable it for now. */
+.mage-pane-host {
+  display: none !important;
+}

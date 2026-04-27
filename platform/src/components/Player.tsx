@@ -18,7 +18,11 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
   return new Blob([buf], { type: mime });
 };
 
-const Player = () => {
+type PlayerProps = {
+  displayControls?: boolean,
+};
+
+const Player = ({ displayControls = false }: PlayerProps) => {
   const { session, signOut } = UserAuth();
   const [preset, setPreset] = useState<string | object | null>(null);
   const [audioSource, setAudioSource] = useState("");
@@ -117,7 +121,8 @@ const Player = () => {
   };
 
   return (
-    <div className="mage-page">
+    // Don't apply mage-page class if displayControls is true - this means player is being used as a child component in Create.tsx which has a mage-page div.
+    <div className={displayControls ? "" : "mage-page"}>
       <header className="mage-page__header">
         <div className="mage-page__title-group">
           <p className="mage-eyebrow">
@@ -126,11 +131,7 @@ const Player = () => {
           </p>
           <h1 className="mage-title">{session?.user?.email}</h1>
         </div>
-        <button
-          type="button"
-          className="mage-btn mage-btn--quiet"
-          onClick={signOut}
-        >
+        <button type="button" className="mage-btn mage-btn--quiet" onClick={signOut}>
           Sign Out
         </button>
       </header>
@@ -182,6 +183,7 @@ const Player = () => {
             <EnginePlayer
               preset={preset}
               audioSource={audioSource}
+              displayControls={displayControls}
               onEngineReady={(e) => (engineRef.current = e)}
             />
           </div>
