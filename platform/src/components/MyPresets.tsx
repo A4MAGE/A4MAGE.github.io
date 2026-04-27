@@ -68,9 +68,16 @@ const MyPresets = () => {
                 <span className="mage-preset-list__num">
                   {(index + 1).toString().padStart(2, '0')}
                 </span>
+                {p.thumbnail_url && (
+                  <img
+                    src={p.thumbnail_url}
+                    alt={p.name}
+                    className="mage-preset-thumb"
+                    loading="lazy"
+                  />
+                )}
                 <div className="mage-preset-info">
                   <span className="mage-preset-name">{p.name}</span>
-                  <span className="mage-tagline">TAG: <strong>{p.tag}</strong></span>
                 </div>
                 <button 
                   className="mage-btn mage-btn--quiet delete-action" 
