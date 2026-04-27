@@ -45,23 +45,22 @@ const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
         <img src={MageLogo} alt="MAGE" className="sidebar-logo-img" />
       </div>
 
-      {!collapsed && (
-        <ul className="sidebar-tabs">
-          {tabs.map((tab) => (
-            <li key={tab.path}>
-              <NavLink
-                to={tab.path}
-                className={({ isActive }) =>
-                  "sidebar-tab" + (isActive ? " sidebar-tab--active" : "")
-                }
-              >
-                <span className="sidebar-tab-icon">{tab.icon}</span>
-                <span className="sidebar-tab-label">{tab.label}</span>
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="sidebar-tabs">
+        {tabs.map((tab) => (
+          <li key={tab.path}>
+            <NavLink
+              to={tab.path}
+              className={({ isActive }) =>
+                "sidebar-tab" + (isActive ? " sidebar-tab--active" : "")
+              }
+              title={collapsed ? tab.label : undefined}
+            >
+              <span className="sidebar-tab-icon">{tab.icon}</span>
+              {!collapsed && <span className="sidebar-tab-label">{tab.label}</span>}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
 
       <button className="sidebar-toggle" onClick={onToggle} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
         <span className="sidebar-toggle__icon">

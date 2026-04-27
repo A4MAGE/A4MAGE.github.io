@@ -262,3 +262,14 @@
   width: 28px;
   height: 28px;
 }
+
+.sidebar--collapsed .sidebar-tabs {
+  width: 100%;
+  padding: 1rem 0;
+}
+
+.sidebar--collapsed .sidebar-tab {
+  justify-content: center;
+  padding: 12px 0;
+  border-left: 3px solid transparent;
+}
