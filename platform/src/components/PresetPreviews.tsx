@@ -58,7 +58,7 @@ const PresetPreviews = ({ onSelect }: { onSelect: (preset: object) => void }) =>
 
   return (
     <div className="mage-rail">
-      <p className="mage-rail__label">Debug Presets</p>
+      <p className="mage-rail__label">Base Presets</p>
       {presets.map((preset, index) => (
         <button
           key={index}

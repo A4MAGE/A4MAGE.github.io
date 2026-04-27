@@ -4,7 +4,7 @@ import PresetPreviews from "./PresetPreviews";
 import { useEffect, useRef, useState } from "react";
 // @ts-ignore
 import Search from "@search/search-bar-main";
-import type { MAGEEngineAPI } from "mage";
+import { type MAGEEngineAPI } from "@notrac/mage";
 
 type PlayerProps = {
   displayControls?: boolean,
