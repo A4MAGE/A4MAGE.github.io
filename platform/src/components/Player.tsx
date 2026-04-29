@@ -37,7 +37,6 @@ const Player = ({ displayControls = false }: PlayerProps) => {
   const [currentPresetDesc, setCurrentPresetDesc] = useState(navPreset?.description ?? "");
   const [currentPresetAuthor, setCurrentPresetAuthor] = useState(navPreset?.username ?? "");
   const [currentPresetId, setCurrentPresetId] = useState(navPreset?.id ?? "");
-  const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [allPresets, setAllPresets] = useState<any[]>([]);
 
   useEffect(() => {
@@ -137,22 +136,6 @@ const Player = ({ displayControls = false }: PlayerProps) => {
     setAudioSource(blobUrl);
   };
 
-  const shareLink = currentPresetId ? `https://a4mage.github.io/player/${currentPresetId}` : "";
-
-  const handleCopyShareLink = async () => {
-    if (!shareLink) {
-      setShareMsg("Select a preset first.");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(shareLink);
-      setShareMsg("Share link copied.");
-    } catch (err) {
-      console.error("Copy share link failed:", err);
-      setShareMsg("Could not copy share link.");
-    }
-  };
 
   const handleSave = async () => {
     const engine = engineRef.current;
@@ -281,17 +264,6 @@ const Player = ({ displayControls = false }: PlayerProps) => {
                 {currentPresetDesc && (
                   <div className="mage-preset-meta__desc">{currentPresetDesc}</div>
                 )}
-              </div>
-              <div className="mage-preset-meta__share">
-                <button
-                  type="button"
-                  className="mage-btn mage-btn--ghost mage-btn--tiny"
-                  onClick={handleCopyShareLink}
-                  disabled={!shareLink}
-                >
-                  Copy Share Link
-                </button>
-                {shareMsg && <div className="mage-preset-meta__msg">{shareMsg}</div>}
               </div>
             </div>
           </div>
