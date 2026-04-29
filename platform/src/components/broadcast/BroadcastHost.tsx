@@ -16,8 +16,11 @@ const BroadcastHost = () => {
   const [engine, setEngine] = useState<MAGEEngineAPI | null>(null);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activePreset, setActivePreset] = useState<Preset | null>(null);
-  const [audioUrl, setAudioUrl] = useState("");
+  const [audioFileName, setAudioFileName] = useState("");
   const [loadedAudioUrl, setLoadedAudioUrl] = useState<string | undefined>(undefined);
+  const [viewerAudioUrl, setViewerAudioUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [roomTitle, setRoomTitle] = useState("");
   const [initialized, setInitialized] = useState(false);
@@ -106,10 +109,19 @@ const BroadcastHost = () => {
     }
   };
 
-  const handleAudioLoad = () => {
-    const url = audioUrl.trim();
+  const handleAudioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+    const blobUrl = URL.createObjectURL(file);
+    blobUrlRef.current = blobUrl;
+    setAudioFileName(file.name);
+    setLoadedAudioUrl(blobUrl);
+  };
+
+  const handleShareAudio = () => {
+    const url = viewerAudioUrl.trim();
     if (!url) return;
-    setLoadedAudioUrl(url);
     publishRef.current?.({ type: "audio", audioUrl: url });
     if (supabase && roomId) {
       supabase
@@ -198,19 +210,40 @@ const BroadcastHost = () => {
 
             {/* Controls panel */}
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {/* Audio URL */}
+              {/* Audio file picker */}
               <div>
-                <p className="mage-body" style={{ fontSize: "12px", marginBottom: "6px" }}>Audio URL</p>
+                <p className="mage-body" style={{ fontSize: "12px", marginBottom: "6px" }}>Audio</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*"
+                  style={{ display: "none" }}
+                  onChange={handleAudioFileChange}
+                />
+                <button
+                  type="button"
+                  className="mage-audio-picker"
+                  style={{ width: "100%", marginBottom: "10px" }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <span className="mage-audio-picker__label">Audio File</span>
+                  <span className={"mage-audio-picker__name" + (audioFileName ? "" : " mage-audio-picker__name--empty")}>
+                    {audioFileName || "No file selected — click to choose"}
+                  </span>
+                </button>
+                <p className="mage-body" style={{ fontSize: "11px", color: "var(--mage-muted, #888)", marginBottom: "6px" }}>
+                  Viewer audio URL (public link)
+                </p>
                 <input
                   type="text"
                   className="mage-input"
-                  placeholder="https://…"
-                  value={audioUrl}
-                  onChange={(e) => setAudioUrl(e.target.value)}
+                  placeholder="https://… (for viewers)"
+                  value={viewerAudioUrl}
+                  onChange={(e) => setViewerAudioUrl(e.target.value)}
                   style={{ width: "100%", marginBottom: "6px" }}
                 />
-                <button type="button" className="mage-btn" onClick={handleAudioLoad} style={{ width: "100%" }}>
-                  Load Audio
+                <button type="button" className="mage-btn" onClick={handleShareAudio} style={{ width: "100%" }}>
+                  Share Audio with Viewers
                 </button>
               </div>
 
