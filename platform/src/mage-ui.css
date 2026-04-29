@@ -790,16 +790,18 @@
 
 .mage-audio-picker {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.85rem 1rem;
-  background: transparent;
-  border: 1px solid var(--mage-cream-10);
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: var(--mage-cream-05);
+  border: 1px solid var(--mage-cream-15);
+  border-radius: 6px;
   color: var(--mage-cream);
   font-family: var(--mage-font-body);
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.25s ease, background 0.25s ease;
+  transition: border-color 0.2s ease, background 0.2s ease;
   width: 100%;
 }
 
@@ -815,24 +817,17 @@
 }
 
 .mage-audio-picker__label {
-  font-size: 0.64rem;
-  letter-spacing: 0.22em;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--mage-cream-60);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.mage-audio-picker__label::before {
-  content: "";
-  width: 0.9rem;
-  height: 1px;
-  background: var(--mage-mint);
+  color: var(--mage-mint);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .mage-audio-picker__name {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   color: var(--mage-cream);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -841,6 +836,7 @@
 
 .mage-audio-picker__name--empty {
   color: var(--mage-cream-40);
+  font-style: italic;
 }
 
 /* ---------- profile (no card, just content) ---------- */

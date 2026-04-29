@@ -230,14 +230,14 @@ const Player = ({ displayControls = false }: PlayerProps) => {
               className="mage-audio-picker"
               onClick={() => fileInputRef.current?.click()}
             >
-              <span className="mage-audio-picker__label">Audio Source</span>
+              <span className="mage-audio-picker__label">↑ Upload Audio</span>
               <span
                 className={
                   "mage-audio-picker__name" +
                   (audioFileName ? "" : " mage-audio-picker__name--empty")
                 }
               >
-                {audioFileName || "No file selected — click to choose"}
+                {audioFileName || "No file chosen"}
               </span>
             </button>
           </div>
