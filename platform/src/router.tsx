@@ -6,6 +6,8 @@ import Explore from "./components/Explore";
 import Player from "./components/Player";
 import MyPresets from "./components/MyPresets";
 import Broadcast from "./components/Broadcast";
+import BroadcastHost from "./components/broadcast/BroadcastHost";
+import BroadcastViewer from "./components/broadcast/BroadcastViewer";
 import Profile from "./components/Profile";
 import SidebarLayout from "./components/SidebarLayout";
 import { AuthContextProvider } from "./context/AuthContext";
@@ -43,7 +45,9 @@ export const router = createBrowserRouter([
           { path: "/player", element: <Player /> },
           { path: "/my-presets", element: <MyPresets /> },
           { path: "/broadcast", element: <Broadcast /> },
-          { path: "/create", element: <Create/>}
+          { path: "/create", element: <Create /> },
+          { path: "/broadcast/host/:roomId", element: <BroadcastHost /> },
+          { path: "/broadcast/room/:roomId", element: <BroadcastViewer /> },
         ],
       },
 
