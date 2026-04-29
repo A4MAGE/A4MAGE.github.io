@@ -14,6 +14,17 @@ const options = {
   keys: ["username", "name", "description"],
 };
 
+function gradientForName(name = "") {
+  let h1 = 0, h2 = 0;
+  for (let i = 0; i < name.length; i++) {
+    h1 = (h1 * 31 + name.charCodeAt(i)) & 0xffff;
+    h2 = (h2 * 17 + name.charCodeAt(i)) & 0xffff;
+  }
+  const hue1 = h1 % 360;
+  const hue2 = (hue1 + 60 + (h2 % 60)) % 360;
+  return `linear-gradient(135deg, hsl(${hue1},55%,28%), hsl(${hue2},60%,18%))`;
+}
+
 function Search({ data, onSelect }) {
   const [fuse, setFuse] = useState(null);
   const [results, setResults] = useState([]);
@@ -55,7 +66,10 @@ function Search({ data, onSelect }) {
                   className="search-result__thumb"
                 />
               ) : (
-                <div className="search-result__thumb search-result__thumb--empty" />
+                <div
+                  className="search-result__thumb"
+                  style={{ background: gradientForName(item.name) }}
+                />
               )}
               <div className="search-result__meta">
                 <span className="search-result__name">{item.name}</span>

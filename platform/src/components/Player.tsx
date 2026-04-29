@@ -50,6 +50,27 @@ const Player = ({ displayControls = false }: PlayerProps) => {
     };
   }, []);
 
+  const autoCaptureThumbnail = async (item: any) => {
+    const engine = engineRef.current;
+    if (!engine || !supabase || !item.id || item.thumbnail_url) return;
+    try {
+      await new Promise((r) => setTimeout(r, 2000));
+      const exported = engine.toPreset();
+      const dataUrl = engine.captureThumbnail ? await engine.captureThumbnail(exported) : null;
+      if (!dataUrl) return;
+      const blob = dataUrlToBlob(dataUrl);
+      const path = `${item.id}.png`;
+      const { error: upErr } = await supabase.storage
+        .from(THUMBNAIL_BUCKET)
+        .upload(path, blob, { upsert: true, contentType: blob.type });
+      if (upErr) return;
+      const { data: urlData } = supabase.storage.from(THUMBNAIL_BUCKET).getPublicUrl(path);
+      const publicUrl = urlData?.publicUrl;
+      if (!publicUrl) return;
+      await supabase.from("preset").update({ thumbnail_url: publicUrl }).eq("id", item.id);
+    } catch (_) {}
+  };
+
   const handlePresetSelect = (item: any) => {
     if (item.scene_data) {
       setPreset(item.scene_data);
@@ -57,6 +78,7 @@ const Player = ({ displayControls = false }: PlayerProps) => {
       setCurrentPresetDesc(item.description);
       setCurrentPresetAuthor(item.username);
       setCurrentPresetId(item.id);
+      if (!item.thumbnail_url) autoCaptureThumbnail(item);
     } else {
       setPreset(item);
       setCurrentPresetName("");
