@@ -28,34 +28,37 @@ const BroadcastHost = () => {
   const publishRef = useRef<PublishFn | null>(null);
   const closeChannelRef = useRef<CloseFn | null>(null);
   const playbackIntervalRef = useRef<number | null>(null);
+  const sessionRef = useRef(session);
+  useEffect(() => { sessionRef.current = session; }, [session]);
 
   // Revoke blob URL on unmount
   useEffect(() => {
     return () => { if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current); };
   }, []);
 
-  // Load user's presets
+  // Load user's presets once on mount
   useEffect(() => {
-    if (!supabase || !session?.user) return;
+    if (!supabase || !sessionRef.current?.user) return;
     supabase
       .from("preset")
       .select("id, name, scene_data, thumbnail_url")
-      .eq("user_id", session.user.id)
+      .eq("user_id", sessionRef.current.user.id)
       .then(({ data, error: e }: { data: any; error: any }) => {
         if (!e && data) setPresets(data);
       });
-  }, [session]);
+  }, []);
 
-  // Create the room row and open channel on mount
+  // Create the room row and open channel on mount — deps intentionally omit session
+  // to prevent auth token refreshes from re-running this and killing the broadcast
   useEffect(() => {
-    if (!supabase || !session?.user || !roomId) return;
+    if (!supabase || !sessionRef.current?.user || !roomId) return;
 
     let active = true;
-    const defaultTitle = `${session.user.email?.split("@")[0]}'s room`;
+    const defaultTitle = `${sessionRef.current.user.email?.split("@")[0]}'s room`;
 
     supabase
       .from("broadcast_room")
-      .upsert({ id: roomId, host_user_id: session.user.id, title: defaultTitle, is_active: true }, { onConflict: "id" })
+      .upsert({ id: roomId, host_user_id: sessionRef.current!.user.id, title: defaultTitle, is_active: true }, { onConflict: "id" })
       .then(({ error: e }: { error: any }) => {
         if (!active) return;
         if (e) { setError(`Could not create room: ${e.message}`); return; }
@@ -69,7 +72,7 @@ const BroadcastHost = () => {
       active = false;
       stopBroadcast(false);
     };
-  }, [roomId, session]);
+  }, [roomId]); // session intentionally excluded — see comment above
 
   // Periodic playback sync while playing
   useEffect(() => {
