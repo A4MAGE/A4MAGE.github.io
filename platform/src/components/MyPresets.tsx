@@ -14,35 +14,19 @@ const MyPresets = () => {
 
   useEffect(() => {
     if (!supabase) return;
-    if (!userID) {
-      setLoading(false);
-      return;
-    }
+    if (!userID) { setLoading(false); return; }
     setLoading(true);
     (async () => {
-      const { data, error } = await supabase
-        .from("preset")
-        .select("*")
-        .eq("user_id", userID);
-      if (error) {
-        console.error("MyPresets fetch failed:", error, "userID=", userID);
-      } else {
-        console.log(`MyPresets: fetched ${data?.length ?? 0} for user ${userID}`);
-        setPresets(data ?? []);
-      }
+      const { data, error } = await supabase.from("preset").select("*").eq("user_id", userID);
+      if (!error) setPresets(data ?? []);
       setLoading(false);
     })();
   }, [userID]);
 
   const handleDelete = async (id: number) => {
     if (!supabase) return;
-    // Delete from the base table — views are not deletable.
     const { error } = await supabase.from("preset").delete().eq("id", id);
-    if (error) {
-      console.error("MyPresets delete failed:", error);
-      return;
-    }
-    setPresets(prev => prev.filter((p) => p.id !== id));
+    if (!error) setPresets(prev => prev.filter((p) => p.id !== id));
   };
 
   const startEdit = (p: any) => {
@@ -53,18 +37,13 @@ const MyPresets = () => {
   const cancelEdit = () => setEditingId(null);
 
   const saveEdit = async (id: number) => {
-    if (!supabase) return;
+    if (!supabase || !editValues.name.trim()) return;
     setSaving(true);
     const { error } = await supabase
       .from("preset")
-      .update({
-        name: editValues.name.trim(),
-        description: editValues.description.trim() || null,
-      })
+      .update({ name: editValues.name.trim(), description: editValues.description.trim() || null })
       .eq("id", id);
-    if (error) {
-      console.error("MyPresets update failed:", error);
-    } else {
+    if (!error) {
       setPresets(prev =>
         prev.map(p =>
           p.id === id
@@ -77,6 +56,11 @@ const MyPresets = () => {
     setSaving(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, id: number) => {
+    if (e.key === "Enter") saveEdit(id);
+    if (e.key === "Escape") cancelEdit();
+  };
+
   return (
     <main className="mage-page">
       <header className="mage-page__header">
@@ -84,7 +68,7 @@ const MyPresets = () => {
           <p className="mage-eyebrow">
             <span className="mage-eyebrow__num">{presets.length}</span> Presets Saved
           </p>
-          <h1 className="mage-title">My Presets</h1>
+          <h1 className="mage-title" style={{ whiteSpace: "nowrap" }}>My Presets</h1>
         </div>
         <Link to="/create" className="mage-btn mage-btn--primary">
           + Create New Preset
@@ -103,14 +87,8 @@ const MyPresets = () => {
         ) : presets.length > 0 ? (
           <ul className="mage-preset-list">
             {presets.map((p, index) => (
-              <li
-                key={p.id}
-                className="mage-preset-item"
-                style={{ alignItems: editingId === p.id ? "flex-start" : "center" }}
-              >
-                <span className="mage-preset-list__num">
-                  {(index + 1).toString().padStart(2, '0')}
-                </span>
+              <li key={p.id} className="mage-preset-item" style={{ alignItems: "center" }}>
+                <span className="mage-preset-list__num">{index + 1}</span>
                 {p.thumbnail_url && (
                   <img
                     src={p.thumbnail_url}
@@ -122,22 +100,23 @@ const MyPresets = () => {
                 )}
                 <div className="mage-preset-info" style={{ flex: 1 }}>
                   {editingId === p.id ? (
-                    <>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                       <input
                         className="mage-input"
                         value={editValues.name}
                         onChange={e => setEditValues(v => ({ ...v, name: e.target.value }))}
+                        onKeyDown={e => handleKeyDown(e, p.id)}
                         placeholder="Preset name"
-                        style={{ marginBottom: "0.4rem", width: "100%" }}
+                        autoFocus
                       />
                       <input
                         className="mage-input"
                         value={editValues.description}
                         onChange={e => setEditValues(v => ({ ...v, description: e.target.value }))}
+                        onKeyDown={e => handleKeyDown(e, p.id)}
                         placeholder="Description (optional)"
-                        style={{ width: "100%" }}
                       />
-                    </>
+                    </div>
                   ) : (
                     <>
                       <span className="mage-preset-name">{p.name}</span>
@@ -150,34 +129,20 @@ const MyPresets = () => {
                   )}
                 </div>
                 {editingId === p.id ? (
-                  <>
-                    <button
-                      className="mage-btn mage-btn--quiet"
-                      onClick={() => saveEdit(p.id)}
-                      disabled={saving || !editValues.name.trim()}
-                    >
-                      {saving ? "Saving…" : "Save"}
-                    </button>
-                    <button
-                      className="mage-btn mage-btn--quiet"
-                      onClick={cancelEdit}
-                      disabled={saving}
-                    >
-                      Cancel
-                    </button>
-                  </>
+                  <button className="mage-btn mage-btn--quiet" onClick={() => saveEdit(p.id)} disabled={saving || !editValues.name.trim()}>
+                    {saving ? "Saving…" : "Save"}
+                  </button>
                 ) : (
-                  <button
-                    className="mage-btn mage-btn--quiet"
-                    onClick={() => startEdit(p)}
-                  >
+                  <button className="mage-btn mage-btn--quiet" onClick={() => startEdit(p)}>
                     Edit
                   </button>
                 )}
-                <button
-                  className="mage-btn mage-btn--quiet delete-action"
-                  onClick={() => handleDelete(p.id)}
-                >
+                {editingId === p.id ? (
+                  <button className="mage-btn mage-btn--quiet" onClick={cancelEdit} disabled={saving}>
+                    Cancel
+                  </button>
+                ) : null}
+                <button className="mage-btn mage-btn--quiet delete-action" onClick={() => handleDelete(p.id)}>
                   Remove
                 </button>
               </li>
