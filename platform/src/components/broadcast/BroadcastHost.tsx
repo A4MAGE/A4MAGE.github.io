@@ -17,6 +17,7 @@ const BroadcastHost = () => {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activePreset, setActivePreset] = useState<Preset | null>(null);
   const [audioUrl, setAudioUrl] = useState("");
+  const [loadedAudioUrl, setLoadedAudioUrl] = useState<string | undefined>(undefined);
   const [isPlaying, setIsPlaying] = useState(false);
   const [roomTitle, setRoomTitle] = useState("");
   const [initialized, setInitialized] = useState(false);
@@ -106,12 +107,14 @@ const BroadcastHost = () => {
   };
 
   const handleAudioLoad = () => {
-    if (!audioUrl.trim()) return;
-    publishRef.current?.({ type: "audio", audioUrl });
+    const url = audioUrl.trim();
+    if (!url) return;
+    setLoadedAudioUrl(url);
+    publishRef.current?.({ type: "audio", audioUrl: url });
     if (supabase && roomId) {
       supabase
         .from("broadcast_room")
-        .update({ current_audio_url: audioUrl, updated_at: new Date().toISOString() })
+        .update({ current_audio_url: url, updated_at: new Date().toISOString() })
         .eq("id", roomId);
     }
   };
@@ -173,7 +176,7 @@ const BroadcastHost = () => {
             <div>
               <EnginePlayer
                 preset={activePreset?.scene_data ?? null}
-                audioSource={audioUrl || undefined}
+                audioSource={loadedAudioUrl}
                 onEngineReady={setEngine}
                 displayControls={false}
                 readOnly
