@@ -24,7 +24,7 @@ const Broadcast = () => {
             <span className="mage-eyebrow__num">05</span>
             Broadcast
           </p>
-          <h1 className="mage-title">Live Rooms</h1>
+          <h1 className="mage-title" style={{ whiteSpace: "nowrap" }}>Live Rooms</h1>
         </div>
         <button
           type="button"

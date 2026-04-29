@@ -136,6 +136,7 @@
   letter-spacing: 0.01em;
   color: var(--mage-cream);
   margin: 0;
+  white-space: nowrap;
 }
 
 .mage-body {
