@@ -269,22 +269,19 @@ const Player = ({ displayControls = false }: PlayerProps) => {
           </div>
 
           <div className="mage-stack">
-            <p className="mage-eyebrow">
-              <span className="mage-eyebrow__num">04</span>
-              Save Preset
-            </p>
             <div className="mage-save-row">
               <input
                 type="text"
                 className="mage-input"
-                placeholder="Preset name"
+                placeholder="Name this preset and save it…"
                 value={presetName}
                 onChange={(e) => setPresetName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSave()}
                 disabled={saving}
               />
               <button
                 type="button"
-                className="mage-btn"
+                className="mage-btn mage-btn--primary mage-save-row__btn"
                 onClick={handleSave}
                 disabled={saving || !session?.user?.id}
               >
