@@ -179,8 +179,17 @@ const BroadcastHost = () => {
                 readOnly
               />
               <div className="mage-engine__controls" style={{ marginTop: "8px" }}>
-                <button type="button" className="mage-btn mage-btn--primary" onClick={handlePlay} disabled={!engine}>Play</button>
-                <button type="button" className="mage-btn mage-btn--primary" onClick={handlePause} disabled={!engine}>Pause</button>
+                <button type="button" className="mage-btn--icon" aria-label="Play" onClick={handlePlay} disabled={!engine}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                </button>
+                <button type="button" className="mage-btn--icon" aria-label="Pause" onClick={handlePause} disabled={!engine}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                </button>
               </div>
             </div>
 
