@@ -1,9 +1,10 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { UserAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../LoadingSpinner";
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { session } = UserAuth();
+  const location = useLocation();
 
   // This check is critical - session will be undefined before supabase updates it to null or with session info
   // This if statement prevents users who are actually logged in from getting kicked back to home menu before supabase SDK updates session variable.
@@ -17,7 +18,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  return <>{session ? <>{children}</> : <Navigate to="/" />}</>;
+  return <>{session ? <>{children}</> : <Navigate to={`/signin?next=${encodeURIComponent(location.pathname)}`} replace />}</>;
 };
 
 export default PrivateRoute;

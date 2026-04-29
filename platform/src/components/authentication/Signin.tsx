@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { UserAuth } from "../../context/AuthContext";
 import { useState } from "react";
 // @ts-ignore — shared homepage components
@@ -16,6 +16,7 @@ const Signin = () => {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signIn } = UserAuth();
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -24,7 +25,8 @@ const Signin = () => {
     try {
       const result = await signIn(email, password);
       if (result.success) {
-        navigate("/profile");
+        const next = searchParams.get("next");
+        navigate(next && next.startsWith("/") ? next : "/profile");
       } else {
         throw new Error(result.data.message);
       }
