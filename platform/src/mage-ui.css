@@ -343,7 +343,7 @@
 
 .mage-page__header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 2rem;
   margin-bottom: 2.5rem;
@@ -587,7 +587,7 @@
 
 .mage-preset-list li {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 1rem;
   padding: 0.85rem 0;
   border-bottom: 1px solid var(--mage-cream-05);

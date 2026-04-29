@@ -28,7 +28,7 @@ const Broadcast = () => {
         </div>
         <button
           type="button"
-          className="mage-btn"
+          className="mage-btn mage-btn--primary"
           onClick={startRoom}
           disabled={creating}
         >

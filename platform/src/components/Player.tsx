@@ -164,21 +164,15 @@ const Player = ({ displayControls = false }: PlayerProps) => {
             <span className="mage-eyebrow__num">03</span>
             Player
           </p>
-          <h1 className="mage-title">{session?.user?.email}</h1>
+          <h1 className="mage-title">Player</h1>
         </div>
       </header>
 
       <div className="mage-grid-player">
         <div className="mage-stack mage-stack--lg">
-          <div className="mage-stack">
-            <p className="mage-eyebrow">
-              <span className="mage-eyebrow__num">01</span>
-              Search Presets
-            </p>
-            <div className="mage-search">
-              {/* @ts-ignore */}
-              <Search onSelect={handlePresetSelect} />
-            </div>
+          <div className="mage-search">
+            {/* @ts-ignore */}
+            <Search onSelect={handlePresetSelect} />
           </div>
 
           <div className="mage-stack">

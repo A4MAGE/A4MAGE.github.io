@@ -36,10 +36,8 @@ const Explore = () => {
         </p>
       </header>
 
-      <div className="mage-stack mage-stack--lg" style={{ maxWidth: "640px" }}>
-        <div className="mage-search">
-          <Search data={presets} />
-        </div>
+      <div className="mage-search">
+        <Search data={presets} />
       </div>
     </div>
   );
