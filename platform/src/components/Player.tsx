@@ -38,6 +38,14 @@ const Player = ({ displayControls = false }: PlayerProps) => {
   const [currentPresetAuthor, setCurrentPresetAuthor] = useState(navPreset?.username ?? "");
   const [currentPresetId, setCurrentPresetId] = useState(navPreset?.id ?? "");
   const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const [allPresets, setAllPresets] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("preset_with_username").select("*").then(({ data, error }: { data: any; error: any }) => {
+      if (!error && data) setAllPresets(data);
+    });
+  }, []);
 
   // Data for saving preset to user account
   const [presetName, setPresetName] = useState("");
@@ -60,7 +68,7 @@ const Player = ({ displayControls = false }: PlayerProps) => {
     const engine = engineRef.current;
     if (!engine?.captureThumbnail || !supabase || !item.id || !item.scene_data) return;
     try {
-      const dataUrl = await engine.captureThumbnail(item.scene_data);
+      const dataUrl = await engine.captureThumbnail(item.scene_data, { settleFrames: 10 });
       if (!dataUrl) return;
       const blob = dataUrlToBlob(dataUrl);
       const path = `${item.id}.png`;
@@ -75,7 +83,8 @@ const Player = ({ displayControls = false }: PlayerProps) => {
     } catch (_) {}
   };
 
-  // When the engine becomes ready, batch-generate thumbnails for any preset missing one.
+  // When the engine becomes ready, batch-generate thumbnails for any preset missing one,
+  // then refresh allPresets so search results show the real thumbnails.
   const batchThumbnailDone = useRef(false);
   const onEngineReady = (e: MAGEEngineAPI) => {
     engineRef.current = e;
@@ -89,8 +98,11 @@ const Player = ({ displayControls = false }: PlayerProps) => {
         if (error || !data?.length) return;
         for (const item of data) {
           await captureThumbnailForItem(item);
-          await new Promise((r) => setTimeout(r, 300));
+          await new Promise((r) => setTimeout(r, 200));
         }
+        // Refresh preset list so search shows real thumbnails
+        const { data: fresh } = await supabase.from("preset_with_username").select("*");
+        if (fresh) setAllPresets(fresh);
       });
   };
 
@@ -218,7 +230,7 @@ const Player = ({ displayControls = false }: PlayerProps) => {
         <div className="mage-stack mage-stack--lg">
           <div className="mage-search">
             {/* @ts-ignore */}
-            <Search onSelect={handlePresetSelect} />
+            <Search data={allPresets.length ? allPresets : undefined} onSelect={handlePresetSelect} />
           </div>
 
           <div className="mage-stack">
