@@ -1,15 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import EnginePlayer from "../mage engine/EnginePlayer";
 import { subscribeToRoom, type RoomState } from "../../lib/ablyBroadcast";
 import type { MAGEEngineAPI } from "@notrac/mage";
 
-// Only correct drift larger than this — small seeks every 2s cause the stutter loop
 const LARGE_DRIFT = 3;
 
 const BroadcastViewer = () => {
   const { roomId } = useParams<{ roomId: string }>();
-  const [title] = useState("Live Room");
   const [ended, setEnded] = useState(false);
   const [currentPreset, setCurrentPreset] = useState<object | null>(null);
   const [currentAudio, setCurrentAudio] = useState<string | null>(null);
@@ -21,102 +19,105 @@ const BroadcastViewer = () => {
   const lastPresetJsonRef = useRef<string | null>(null);
   const lastAudioUrlRef = useRef<string | null>(null);
 
-  const clearRetry = () => { if (retryRef.current) { window.clearInterval(retryRef.current); retryRef.current = null; } };
+  const clearRetry = () => {
+    if (retryRef.current) { window.clearInterval(retryRef.current); retryRef.current = null; }
+  };
 
-  const startPlay = (time: number) => {
-    console.log("[Viewer] startPlay called, time=", time);
+  // Retries every 100ms until engine + audio are ready, then seeks + plays.
+  // Safe to call multiple times — clears the previous retry each call.
+  const startPlay = useCallback((time: number) => {
+    console.log("[Viewer] startPlay time=", time);
     shouldPlayRef.current = true;
     targetTimeRef.current = time;
     clearRetry();
     retryRef.current = window.setInterval(() => {
       const eng = engineRef.current;
       const loaded = eng?.isAudioLoaded();
-      console.log("[Viewer] retry tick — eng=", !!eng, "isAudioLoaded=", loaded);
       if (!eng || !loaded) return;
       eng.seek(targetTimeRef.current);
       eng.play();
       clearRetry();
-      console.log("[Viewer] play started at", targetTimeRef.current);
+      console.log("[Viewer] ▶ playing at", targetTimeRef.current);
     }, 100);
-  };
+  }, []);
 
-  const tryPause = () => {
-    console.log("[Viewer] tryPause");
+  const tryPause = useCallback(() => {
     shouldPlayRef.current = false;
     clearRetry();
     engineRef.current?.pause();
-  };
+    console.log("[Viewer] ⏸ paused");
+  }, []);
 
-  const applyState = (state: RoomState) => {
-    console.log("[Viewer] applyState", {
+  const applyState = useCallback((state: RoomState) => {
+    console.log("[Viewer] state", {
       playing: state.playing,
-      playbackTime: state.playbackTime,
+      t: state.playbackTime,
       hasPreset: !!state.presetData,
-      audioUrl: state.audioUrl,
+      audioUrl: state.audioUrl ?? "(none)",
       ended: state.ended,
       shouldPlay: shouldPlayRef.current,
+      audioLoaded: engineRef.current?.isAudioLoaded(),
     });
 
     if (state.ended) { setEnded(true); return; }
 
+    // Only update preset if it actually changed (avoids reloading the engine every 2s)
     if (state.presetData) {
       const json = JSON.stringify(state.presetData);
       if (json !== lastPresetJsonRef.current) {
-        console.log("[Viewer] preset changed — updating");
         lastPresetJsonRef.current = json;
         setCurrentPreset(state.presetData);
-      } else {
-        console.log("[Viewer] preset unchanged — skipping");
+        console.log("[Viewer] preset updated");
       }
     }
 
+    // Only update audio URL if it changed
     if (state.audioUrl && state.audioUrl !== lastAudioUrlRef.current) {
-      console.log("[Viewer] audio URL changed —", state.audioUrl);
+      console.log("[Viewer] audio URL arrived →", state.audioUrl);
       lastAudioUrlRef.current = state.audioUrl;
       setCurrentAudio(state.audioUrl);
-    } else if (state.audioUrl) {
-      console.log("[Viewer] audio URL unchanged — skipping");
-    } else {
-      console.log("[Viewer] no audio URL in state");
+      // If we're already supposed to be playing, restart the retry loop so it
+      // picks up the newly-loaded audio (previous loop was spinning on null audio).
+      if (shouldPlayRef.current) {
+        console.log("[Viewer] audio arrived while playing — restarting retry loop");
+        startPlay(targetTimeRef.current);
+      }
     }
 
     if (state.playing) {
       if (!shouldPlayRef.current) {
-        console.log("[Viewer] paused→playing transition, calling startPlay");
+        // Transition paused → playing
         startPlay(state.playbackTime);
       } else {
+        // Already in play mode — only correct large drift
         const eng = engineRef.current;
-        const loaded = eng?.isAudioLoaded();
-        const currentTime = eng?.getAudioTime() ?? 0;
-        const drift = Math.abs(currentTime - state.playbackTime);
-        console.log("[Viewer] already playing — isAudioLoaded=", loaded, "currentTime=", currentTime, "hostTime=", state.playbackTime, "drift=", drift);
-        if (loaded) {
+        if (eng?.isAudioLoaded()) {
+          const drift = Math.abs(eng.getAudioTime() - state.playbackTime);
           if (drift > LARGE_DRIFT) {
-            console.log("[Viewer] drift too large, seeking to", state.playbackTime);
-            eng!.seek(state.playbackTime);
+            console.log("[Viewer] correcting drift", drift, "→ seek", state.playbackTime);
+            eng.seek(state.playbackTime);
           }
         } else {
+          // Audio not loaded yet — keep target time fresh
           targetTimeRef.current = state.playbackTime;
         }
       }
     } else {
       tryPause();
     }
-  };
+  }, [startPlay, tryPause]);
 
-  const onEngineReady = (eng: MAGEEngineAPI) => {
-    console.log("[Viewer] onEngineReady, shouldPlay=", shouldPlayRef.current);
+  const onEngineReady = useCallback((eng: MAGEEngineAPI) => {
+    console.log("[Viewer] engine ready, shouldPlay=", shouldPlayRef.current);
     engineRef.current = eng;
     if (shouldPlayRef.current) startPlay(targetTimeRef.current);
-  };
+  }, [startPlay]);
 
   useEffect(() => {
     if (!roomId) return;
-    // rewind:1 in subscribeToRoom means Ably replays the last published state
-    // immediately on subscribe — late joiners get it within milliseconds
     const unsub = subscribeToRoom(roomId, applyState);
     return () => { unsub(); clearRetry(); };
-  }, [roomId]);
+  }, [roomId, applyState]);
 
   if (ended) return (
     <div className="mage-page">
@@ -135,7 +136,7 @@ const BroadcastViewer = () => {
       <header className="mage-page__header">
         <div className="mage-page__title-group">
           <p className="mage-eyebrow"><span className="mage-eyebrow__num">05</span>Broadcast</p>
-          <h1 className="mage-title">{title}</h1>
+          <h1 className="mage-title">Live Room</h1>
         </div>
         <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#e74c3c", fontWeight: 600 }}>
           <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#e74c3c", animation: "pulse 1.5s infinite" }} />
