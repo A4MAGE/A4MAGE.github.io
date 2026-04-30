@@ -18,34 +18,42 @@ const BroadcastViewer = () => {
   const [currentAudio, setCurrentAudio] = useState<string | null>(null);
 
   const engineRef = useRef<MAGEEngineAPI | null>(null);
-  const pendingRef = useRef<{ time: number } | null>(null);
-  const pendingTimerRef = useRef<number | null>(null);
+
+  // Intended playback state — decoupled from engine readiness
+  const shouldPlayRef = useRef(false);
+  const targetTimeRef = useRef(0);
+  const playRetryRef = useRef<number | null>(null);
+
+  const clearRetry = () => {
+    if (playRetryRef.current) { window.clearInterval(playRetryRef.current); playRetryRef.current = null; }
+  };
+
+  // Try to play. If engine/audio not ready, keep retrying until they are.
+  const tryPlay = (time: number) => {
+    shouldPlayRef.current = true;
+    targetTimeRef.current = time;
+    clearRetry();
+    playRetryRef.current = window.setInterval(() => {
+      const eng = engineRef.current;
+      if (!eng) return; // engine not mounted yet
+      if (!eng.isAudioLoaded()) return; // audio still loading
+      if (Math.abs(eng.getAudioTime() - targetTimeRef.current) > DRIFT_THRESHOLD) {
+        eng.seek(targetTimeRef.current);
+      }
+      eng.play();
+      clearRetry();
+    }, 100);
+  };
+
+  const tryPause = () => {
+    shouldPlayRef.current = false;
+    clearRetry();
+    engineRef.current?.pause();
+  };
 
   const applyPlayback = (playing: boolean, time: number) => {
-    const eng = engineRef.current;
-    if (!eng) return;
-    if (!playing) { eng.pause(); return; }
-    if (eng.isAudioLoaded()) {
-      if (Math.abs(eng.getAudioTime() - time) > DRIFT_THRESHOLD) eng.seek(time);
-      eng.play();
-    } else {
-      // Queue until audio ready
-      pendingRef.current = { time };
-      if (!pendingTimerRef.current) {
-        pendingTimerRef.current = window.setInterval(() => {
-          const e = engineRef.current;
-          const p = pendingRef.current;
-          if (!e || !p) { window.clearInterval(pendingTimerRef.current!); pendingTimerRef.current = null; return; }
-          if (e.isAudioLoaded()) {
-            if (Math.abs(e.getAudioTime() - p.time) > DRIFT_THRESHOLD) e.seek(p.time);
-            e.play();
-            pendingRef.current = null;
-            window.clearInterval(pendingTimerRef.current!);
-            pendingTimerRef.current = null;
-          }
-        }, 100);
-      }
-    }
+    if (playing) tryPlay(time);
+    else tryPause();
   };
 
   const applyRow = (row: Partial<RoomRow>) => {
@@ -58,7 +66,13 @@ const BroadcastViewer = () => {
     }
   };
 
-  // Load initial room state from DB
+  // When engine becomes ready, retry play if we should be playing
+  const onEngineReady = (eng: MAGEEngineAPI) => {
+    engineRef.current = eng;
+    if (shouldPlayRef.current) tryPlay(targetTimeRef.current);
+  };
+
+  // Fetch initial room state
   useEffect(() => {
     if (!supabase || !roomId) return;
     supabase
@@ -73,7 +87,7 @@ const BroadcastViewer = () => {
       });
   }, [roomId]);
 
-  // Subscribe to Postgres Changes — any DB row update fires immediately
+  // Subscribe to Postgres Changes + broadcast ticks
   useEffect(() => {
     if (!roomId || loading || notFound) return;
     const unsub = openViewerSubscription(
@@ -81,10 +95,7 @@ const BroadcastViewer = () => {
       (row) => applyRow(row),
       (tick) => applyPlayback(tick.playing, tick.currentTime)
     );
-    return () => {
-      unsub();
-      if (pendingTimerRef.current) window.clearInterval(pendingTimerRef.current);
-    };
+    return () => { unsub(); clearRetry(); };
   }, [roomId, loading, notFound]);
 
   if (loading) return <div className="mage-page"><p className="mage-body">Joining room…</p></div>;
@@ -117,7 +128,7 @@ const BroadcastViewer = () => {
       <EnginePlayer
         preset={currentPreset ?? undefined}
         audioSource={currentAudio ?? undefined}
-        onEngineReady={(eng) => { engineRef.current = eng; }}
+        onEngineReady={onEngineReady}
         readOnly
       />
 
