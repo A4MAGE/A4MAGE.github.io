@@ -23,52 +23,79 @@ const BroadcastViewer = () => {
 
   const clearRetry = () => { if (retryRef.current) { window.clearInterval(retryRef.current); retryRef.current = null; } };
 
-  // Full start: seek to time and play, retrying until engine+audio are ready
   const startPlay = (time: number) => {
+    console.log("[Viewer] startPlay called, time=", time);
     shouldPlayRef.current = true;
     targetTimeRef.current = time;
     clearRetry();
     retryRef.current = window.setInterval(() => {
       const eng = engineRef.current;
-      if (!eng || !eng.isAudioLoaded()) return;
+      const loaded = eng?.isAudioLoaded();
+      console.log("[Viewer] retry tick — eng=", !!eng, "isAudioLoaded=", loaded);
+      if (!eng || !loaded) return;
       eng.seek(targetTimeRef.current);
       eng.play();
       clearRetry();
+      console.log("[Viewer] play started at", targetTimeRef.current);
     }, 100);
   };
 
   const tryPause = () => {
+    console.log("[Viewer] tryPause");
     shouldPlayRef.current = false;
     clearRetry();
     engineRef.current?.pause();
   };
 
   const applyState = (state: RoomState) => {
+    console.log("[Viewer] applyState", {
+      playing: state.playing,
+      playbackTime: state.playbackTime,
+      hasPreset: !!state.presetData,
+      audioUrl: state.audioUrl,
+      ended: state.ended,
+      shouldPlay: shouldPlayRef.current,
+    });
+
     if (state.ended) { setEnded(true); return; }
+
     if (state.presetData) {
       const json = JSON.stringify(state.presetData);
       if (json !== lastPresetJsonRef.current) {
+        console.log("[Viewer] preset changed — updating");
         lastPresetJsonRef.current = json;
         setCurrentPreset(state.presetData);
+      } else {
+        console.log("[Viewer] preset unchanged — skipping");
       }
     }
+
     if (state.audioUrl && state.audioUrl !== lastAudioUrlRef.current) {
+      console.log("[Viewer] audio URL changed —", state.audioUrl);
       lastAudioUrlRef.current = state.audioUrl;
       setCurrentAudio(state.audioUrl);
+    } else if (state.audioUrl) {
+      console.log("[Viewer] audio URL unchanged — skipping");
+    } else {
+      console.log("[Viewer] no audio URL in state");
     }
 
     if (state.playing) {
       if (!shouldPlayRef.current) {
-        // Transitioning paused → playing: full seek + start
+        console.log("[Viewer] paused→playing transition, calling startPlay");
         startPlay(state.playbackTime);
       } else {
-        // Already playing: only fix large drift (>3s), don't interrupt normal playback
         const eng = engineRef.current;
-        if (eng?.isAudioLoaded()) {
-          const drift = Math.abs(eng.getAudioTime() - state.playbackTime);
-          if (drift > LARGE_DRIFT) eng.seek(state.playbackTime);
+        const loaded = eng?.isAudioLoaded();
+        const currentTime = eng?.getAudioTime() ?? 0;
+        const drift = Math.abs(currentTime - state.playbackTime);
+        console.log("[Viewer] already playing — isAudioLoaded=", loaded, "currentTime=", currentTime, "hostTime=", state.playbackTime, "drift=", drift);
+        if (loaded) {
+          if (drift > LARGE_DRIFT) {
+            console.log("[Viewer] drift too large, seeking to", state.playbackTime);
+            eng!.seek(state.playbackTime);
+          }
         } else {
-          // Audio not loaded yet — update target time but keep retrying
           targetTimeRef.current = state.playbackTime;
         }
       }
@@ -78,6 +105,7 @@ const BroadcastViewer = () => {
   };
 
   const onEngineReady = (eng: MAGEEngineAPI) => {
+    console.log("[Viewer] onEngineReady, shouldPlay=", shouldPlayRef.current);
     engineRef.current = eng;
     if (shouldPlayRef.current) startPlay(targetTimeRef.current);
   };
