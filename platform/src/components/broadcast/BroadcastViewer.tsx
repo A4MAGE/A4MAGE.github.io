@@ -18,6 +18,8 @@ const BroadcastViewer = () => {
   const shouldPlayRef = useRef(false);
   const targetTimeRef = useRef(0);
   const retryRef = useRef<number | null>(null);
+  const lastPresetJsonRef = useRef<string | null>(null);
+  const lastAudioUrlRef = useRef<string | null>(null);
 
   const clearRetry = () => { if (retryRef.current) { window.clearInterval(retryRef.current); retryRef.current = null; } };
 
@@ -43,8 +45,17 @@ const BroadcastViewer = () => {
 
   const applyState = (state: RoomState) => {
     if (state.ended) { setEnded(true); return; }
-    if (state.presetData) setCurrentPreset(state.presetData);
-    if (state.audioUrl) setCurrentAudio(state.audioUrl);
+    if (state.presetData) {
+      const json = JSON.stringify(state.presetData);
+      if (json !== lastPresetJsonRef.current) {
+        lastPresetJsonRef.current = json;
+        setCurrentPreset(state.presetData);
+      }
+    }
+    if (state.audioUrl && state.audioUrl !== lastAudioUrlRef.current) {
+      lastAudioUrlRef.current = state.audioUrl;
+      setCurrentAudio(state.audioUrl);
+    }
 
     if (state.playing) {
       if (!shouldPlayRef.current) {
