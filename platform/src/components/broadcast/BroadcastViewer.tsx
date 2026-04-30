@@ -4,7 +4,8 @@ import EnginePlayer from "../mage engine/EnginePlayer";
 import { subscribeToRoom, type RoomState } from "../../lib/ablyBroadcast";
 import type { MAGEEngineAPI } from "@notrac/mage";
 
-const DRIFT = 0.3;
+// Only correct drift larger than this — small seeks every 2s cause the stutter loop
+const LARGE_DRIFT = 3;
 
 const BroadcastViewer = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -20,14 +21,15 @@ const BroadcastViewer = () => {
 
   const clearRetry = () => { if (retryRef.current) { window.clearInterval(retryRef.current); retryRef.current = null; } };
 
-  const tryPlay = (time: number) => {
+  // Full start: seek to time and play, retrying until engine+audio are ready
+  const startPlay = (time: number) => {
     shouldPlayRef.current = true;
     targetTimeRef.current = time;
     clearRetry();
     retryRef.current = window.setInterval(() => {
       const eng = engineRef.current;
       if (!eng || !eng.isAudioLoaded()) return;
-      if (Math.abs(eng.getAudioTime() - targetTimeRef.current) > DRIFT) eng.seek(targetTimeRef.current);
+      eng.seek(targetTimeRef.current);
       eng.play();
       clearRetry();
     }, 100);
@@ -43,13 +45,30 @@ const BroadcastViewer = () => {
     if (state.ended) { setEnded(true); return; }
     if (state.presetData) setCurrentPreset(state.presetData);
     if (state.audioUrl) setCurrentAudio(state.audioUrl);
-    if (state.playing) tryPlay(state.playbackTime);
-    else tryPause();
+
+    if (state.playing) {
+      if (!shouldPlayRef.current) {
+        // Transitioning paused → playing: full seek + start
+        startPlay(state.playbackTime);
+      } else {
+        // Already playing: only fix large drift (>3s), don't interrupt normal playback
+        const eng = engineRef.current;
+        if (eng?.isAudioLoaded()) {
+          const drift = Math.abs(eng.getAudioTime() - state.playbackTime);
+          if (drift > LARGE_DRIFT) eng.seek(state.playbackTime);
+        } else {
+          // Audio not loaded yet — update target time but keep retrying
+          targetTimeRef.current = state.playbackTime;
+        }
+      }
+    } else {
+      tryPause();
+    }
   };
 
   const onEngineReady = (eng: MAGEEngineAPI) => {
     engineRef.current = eng;
-    if (shouldPlayRef.current) tryPlay(targetTimeRef.current);
+    if (shouldPlayRef.current) startPlay(targetTimeRef.current);
   };
 
   useEffect(() => {
