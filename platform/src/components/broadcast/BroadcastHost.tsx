@@ -218,8 +218,8 @@ const BroadcastHost = () => {
           <p className="mage-eyebrow"><span className="mage-eyebrow__num">05</span>Broadcast</p>
           <h1 className="mage-title">You're Live</h1>
         </div>
-        <button type="button" className="mage-btn" onClick={() => stopBroadcast(true)}
-          style={{ background: "#c0392b" }}>
+        <button type="button" className="mage-btn mage-btn--quiet" onClick={() => stopBroadcast(true)}
+          style={{ background: "rgba(192,57,43,0.15)", border: "1px solid rgba(192,57,43,0.5)", color: "#e74c3c", flexShrink: 0, width: "auto", padding: "0.4rem 1rem", fontSize: "0.82rem" }}>
           Stop Broadcasting
         </button>
       </header>
