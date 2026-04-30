@@ -29,6 +29,7 @@ export const router = createBrowserRouter([
       { path: "/signup", element: <Signup /> },
       { path: "/signin", element: <Signin /> },
       { path: "/login", element: <Navigate to="/signin" replace /> },
+      { path: "/broadcast/room/:roomId", element: <BroadcastViewer /> },
 
       // Authenticated pages — sidebar layout
       {
@@ -47,7 +48,6 @@ export const router = createBrowserRouter([
           { path: "/broadcast", element: <Broadcast /> },
           { path: "/create", element: <Create /> },
           { path: "/broadcast/host/:roomId", element: <BroadcastHost /> },
-          { path: "/broadcast/room/:roomId", element: <BroadcastViewer /> },
         ],
       },
 
