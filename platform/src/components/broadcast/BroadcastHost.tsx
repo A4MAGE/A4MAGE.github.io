@@ -28,6 +28,9 @@ const BroadcastHost = () => {
   const publishRef = useRef<PublishFn | null>(null);
   const closeChannelRef = useRef<CloseFn | null>(null);
   const playbackIntervalRef = useRef<number | null>(null);
+  const stateSyncIntervalRef = useRef<number | null>(null);
+  const activePresetRef = useRef<Preset | null>(null);
+  const loadedAudioUrlRef = useRef<string | undefined>(undefined);
   const sessionRef = useRef(session);
   useEffect(() => { sessionRef.current = session; }, [session]);
 
@@ -133,6 +136,27 @@ const BroadcastHost = () => {
     }
     if (navigate_away) navigate("/broadcast");
   };
+
+  // Keep refs in sync so the state-sync interval always has latest values
+  useEffect(() => { activePresetRef.current = activePreset; }, [activePreset]);
+  useEffect(() => { loadedAudioUrlRef.current = loadedAudioUrl; }, [loadedAudioUrl]);
+
+  // State-sync broadcast every 2s — late-joining viewers catch up within 2s
+  useEffect(() => {
+    if (!initialized) return;
+    stateSyncIntervalRef.current = window.setInterval(() => {
+      if (!publishRef.current) return;
+      publishRef.current({
+        type: "state",
+        presetData: activePresetRef.current?.scene_data ?? null,
+        presetId: activePresetRef.current?.id ?? null,
+        audioUrl: loadedAudioUrlRef.current ?? null,
+        playing: isPlaying,
+        currentTime: engineRef.current?.getAudioTime() ?? 0,
+      });
+    }, 2000);
+    return () => { if (stateSyncIntervalRef.current) window.clearInterval(stateSyncIntervalRef.current); };
+  }, [initialized, isPlaying]);
 
   const handlePresetSelect = (preset: Preset) => {
     setActivePreset(preset);

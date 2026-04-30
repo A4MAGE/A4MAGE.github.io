@@ -31,6 +31,7 @@ const Broadcast = () => {
           className="mage-btn mage-btn--primary"
           onClick={startRoom}
           disabled={creating}
+          style={{ width: "auto", flexShrink: 0, padding: "0.45rem 1.25rem", fontSize: "0.85rem" }}
         >
           {creating ? "Starting…" : "Start your own room"}
         </button>

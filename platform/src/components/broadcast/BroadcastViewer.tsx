@@ -54,6 +54,20 @@ const BroadcastViewer = () => {
     if (!roomId || loading || ended || notFound) return;
 
     const handleMessage = (msg: BroadcastMessage) => {
+      if (msg.type === "state") {
+        // Full state sync for late joiners — apply everything we don't already have
+        if (msg.presetData) setCurrentPreset((p) => p ?? msg.presetData);
+        if (msg.audioUrl) setCurrentAudio((a) => a ?? msg.audioUrl);
+        // Also handle playback from state sync
+        const eng = engineRef.current;
+        if (eng && msg.playing) {
+          if (eng.isAudioLoaded()) {
+            if (Math.abs(eng.getAudioTime() - msg.currentTime) > DRIFT_THRESHOLD) eng.seek(msg.currentTime);
+            eng.play();
+          }
+        }
+        return;
+      }
       if (msg.type === "preset") {
         setCurrentPreset(msg.presetData);
       } else if (msg.type === "audio") {

@@ -23,11 +23,21 @@ export type EndMessage = {
   type: "end";
 };
 
+export type StateSyncMessage = {
+  type: "state";
+  presetData: object | null;
+  presetId?: number | null;
+  audioUrl: string | null;
+  playing: boolean;
+  currentTime: number;
+};
+
 export type BroadcastMessage =
   | PresetMessage
   | AudioMessage
   | PlaybackMessage
-  | EndMessage;
+  | EndMessage
+  | StateSyncMessage;
 
 // ── Channel helpers ──────────────────────────────────────────────────────────
 
@@ -71,7 +81,8 @@ export function openViewerChannel(
     .on("broadcast", { event: "preset" }, ({ payload }) => onMessage(payload as BroadcastMessage))
     .on("broadcast", { event: "audio" }, ({ payload }) => onMessage(payload as BroadcastMessage))
     .on("broadcast", { event: "playback" }, ({ payload }) => onMessage(payload as BroadcastMessage))
-    .on("broadcast", { event: "end" }, ({ payload }) => onMessage(payload as BroadcastMessage));
+    .on("broadcast", { event: "end" }, ({ payload }) => onMessage(payload as BroadcastMessage))
+    .on("broadcast", { event: "state" }, ({ payload }) => onMessage(payload as BroadcastMessage));
 
   channel.subscribe();
 
