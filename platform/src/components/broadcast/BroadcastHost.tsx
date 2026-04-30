@@ -119,6 +119,13 @@ const BroadcastHost = () => {
 
     setAudioUploading(true);
     setUploadError(null);
+
+    // Ensure bucket exists (creates it if missing)
+    const { error: bucketError } = await supabase.storage.createBucket("broadcast-audio", { public: true });
+    if (bucketError && !bucketError.message.includes("already exists")) {
+      console.warn("[Host] bucket create warning:", bucketError.message);
+    }
+
     const path = `${roomId}/${Date.now()}-${file.name}`;
     console.log("[Host] uploading:", path);
     const { data, error } = await supabase.storage.from("broadcast-audio").upload(path, file, { upsert: true });
@@ -126,7 +133,7 @@ const BroadcastHost = () => {
 
     if (error || !data) {
       console.error("[Host] upload failed:", error?.message);
-      setUploadError(`Upload failed: ${error?.message ?? "unknown error"}. Paste a public URL instead.`);
+      setUploadError(`Upload failed: ${error?.message ?? "unknown error"}`);
       return;
     }
 
