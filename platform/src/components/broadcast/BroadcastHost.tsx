@@ -293,11 +293,11 @@ const BroadcastHost = () => {
                   disabled={audioUploading}
                 >
                   <span className="mage-audio-picker__label">
-                    {audioUploading ? "Uploading…" : "↑ Audio"}
+                    {audioUploading ? "Uploading…" : "↑ Upload Audio"}
                   </span>
                   {audioFileName && (
                     <span className="mage-audio-picker__name">
-                      {audioUploading ? "Sharing…" : audioFileName}
+                      {audioUploading ? "Sharing with viewers…" : audioFileName}
                     </span>
                   )}
                 </button>

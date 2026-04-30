@@ -233,14 +233,9 @@ const Player = ({ displayControls = false }: PlayerProps) => {
                 style={{ flex: 1 }}
               >
                 <span className="mage-audio-picker__label">↑ Upload Audio</span>
-                <span
-                  className={
-                    "mage-audio-picker__name" +
-                    (audioFileName ? "" : " mage-audio-picker__name--empty")
-                  }
-                >
-                  {audioFileName || "No file chosen"}
-                </span>
+                {audioFileName && (
+                  <span className="mage-audio-picker__name">{audioFileName}</span>
+                )}
               </button>
               <div className="mage-save-row" style={{ flex: 1 }}>
                 <input
