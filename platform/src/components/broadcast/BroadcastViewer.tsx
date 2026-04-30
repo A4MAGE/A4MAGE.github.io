@@ -1,17 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import EnginePlayer from "../mage engine/EnginePlayer";
 import { subscribeToRoom, type RoomState } from "../../lib/ablyBroadcast";
+import { UserAuth } from "../../context/AuthContext";
+import { supabase } from "../../supabaseClient";
 import type { MAGEEngineAPI } from "@notrac/mage";
 
 const LARGE_DRIFT = 3;
 
 const BroadcastViewer = () => {
   const { roomId } = useParams<{ roomId: string }>();
+  const { session } = UserAuth();
+  const navigate = useNavigate();
+
   const [ended, setEnded] = useState(false);
   const [currentPreset, setCurrentPreset] = useState<object | null>(null);
   const [currentAudio, setCurrentAudio] = useState<string | null>(null);
   const [hostPlaying, setHostPlaying] = useState(false);
+  const [hostName, setHostName] = useState<string | null>(null);
 
   const engineRef = useRef<MAGEEngineAPI | null>(null);
   const shouldPlayRef = useRef(false);
@@ -20,12 +26,30 @@ const BroadcastViewer = () => {
   const lastPresetJsonRef = useRef<string | null>(null);
   const lastAudioUrlRef = useRef<string | null>(null);
 
+  // Redirect to sign in if not logged in (preserve return URL)
+  useEffect(() => {
+    if (session === null) {
+      navigate(`/signin?redirect=/broadcast/room/${roomId}`);
+    }
+  }, [session, roomId, navigate]);
+
+  // Fetch host display name from broadcast_room table
+  useEffect(() => {
+    if (!supabase || !roomId) return;
+    supabase
+      .from("broadcast_room")
+      .select("title, host_user_id")
+      .eq("id", roomId)
+      .single()
+      .then(({ data }: any) => {
+        if (data?.title) setHostName(data.title);
+      });
+  }, [roomId]);
+
   const clearRetry = () => {
     if (retryRef.current) { window.clearInterval(retryRef.current); retryRef.current = null; }
   };
 
-  // Retries every 100ms until engine + audio are ready, then seeks + plays.
-  // Safe to call multiple times — clears the previous retry each call.
   const startPlay = useCallback((time: number) => {
     console.log("[Viewer] startPlay time=", time);
     shouldPlayRef.current = true;
@@ -56,52 +80,35 @@ const BroadcastViewer = () => {
       hasPreset: !!state.presetData,
       audioUrl: state.audioUrl ?? "(none)",
       ended: state.ended,
-      shouldPlay: shouldPlayRef.current,
-      audioLoaded: engineRef.current?.isAudioLoaded(),
     });
 
     if (state.ended) { setEnded(true); return; }
 
-    // Only update preset if it actually changed (avoids reloading the engine every 2s)
     if (state.presetData) {
       const json = JSON.stringify(state.presetData);
       if (json !== lastPresetJsonRef.current) {
         lastPresetJsonRef.current = json;
         setCurrentPreset(state.presetData);
-        console.log("[Viewer] preset updated");
       }
     }
 
-    // Only update audio URL if it changed
     if (state.audioUrl && state.audioUrl !== lastAudioUrlRef.current) {
-      console.log("[Viewer] audio URL arrived →", state.audioUrl);
       lastAudioUrlRef.current = state.audioUrl;
       setCurrentAudio(state.audioUrl);
-      // If we're already supposed to be playing, restart the retry loop so it
-      // picks up the newly-loaded audio (previous loop was spinning on null audio).
-      if (shouldPlayRef.current) {
-        console.log("[Viewer] audio arrived while playing — restarting retry loop");
-        startPlay(targetTimeRef.current);
-      }
+      if (shouldPlayRef.current) startPlay(targetTimeRef.current);
     }
 
     setHostPlaying(state.playing);
 
     if (state.playing) {
       if (!shouldPlayRef.current) {
-        // Transition paused → playing
         startPlay(state.playbackTime);
       } else {
-        // Already in play mode — only correct large drift
         const eng = engineRef.current;
         if (eng?.isAudioLoaded()) {
           const drift = Math.abs(eng.getAudioTime() - state.playbackTime);
-          if (drift > LARGE_DRIFT) {
-            console.log("[Viewer] correcting drift", drift, "→ seek", state.playbackTime);
-            eng.seek(state.playbackTime);
-          }
+          if (drift > LARGE_DRIFT) eng.seek(state.playbackTime);
         } else {
-          // Audio not loaded yet — keep target time fresh
           targetTimeRef.current = state.playbackTime;
         }
       }
@@ -111,7 +118,6 @@ const BroadcastViewer = () => {
   }, [startPlay, tryPause]);
 
   const onEngineReady = useCallback((eng: MAGEEngineAPI) => {
-    console.log("[Viewer] engine ready, shouldPlay=", shouldPlayRef.current);
     engineRef.current = eng;
     if (shouldPlayRef.current) startPlay(targetTimeRef.current);
   }, [startPlay]);
@@ -121,6 +127,9 @@ const BroadcastViewer = () => {
     const unsub = subscribeToRoom(roomId, applyState);
     return () => { unsub(); clearRetry(); };
   }, [roomId, applyState]);
+
+  // Still checking auth
+  if (session === undefined) return null;
 
   if (ended) return (
     <div className="mage-page">
@@ -139,7 +148,7 @@ const BroadcastViewer = () => {
       <header className="mage-page__header">
         <div className="mage-page__title-group">
           <p className="mage-eyebrow"><span className="mage-eyebrow__num">05</span>Broadcast</p>
-          <h1 className="mage-title">Live Room</h1>
+          <h1 className="mage-title">{hostName ?? "Live Room"}</h1>
         </div>
         <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#e74c3c", fontWeight: 600 }}>
           <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#e74c3c", animation: "pulse 1.5s infinite" }} />
