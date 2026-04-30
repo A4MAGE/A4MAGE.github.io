@@ -63,7 +63,15 @@ const BroadcastHost = () => {
       .then(({ data, error }: any) => { if (!error && data) setPresets(data); });
   }, []);
 
-  // Create room in DB + start state sync interval
+  // Start Ably publishing immediately — don't wait for DB
+  useEffect(() => {
+    if (!roomId) return;
+    setInitialized(true);
+    syncIntervalRef.current = window.setInterval(() => pushState(), 2000);
+    return () => { if (syncIntervalRef.current) window.clearInterval(syncIntervalRef.current); };
+  }, [roomId]);
+
+  // DB upsert is only for the room list — runs independently, doesn't gate broadcast
   useEffect(() => {
     if (!supabase || !sessionRef.current?.user || !roomId) return;
     let active = true;
@@ -74,17 +82,10 @@ const BroadcastHost = () => {
       .upsert({ id: roomId, host_user_id: sessionRef.current.user.id, title, is_active: true }, { onConflict: "id" })
       .then(({ error: e }: any) => {
         if (!active) return;
-        if (e) { setRoomError(e.message); return; }
-        setInitialized(true);
-
-        // Publish full state every 2s — Ably rewind:1 ensures late joiners always get it
-        syncIntervalRef.current = window.setInterval(() => pushState(), 2000);
+        if (e) console.warn("[Host] DB upsert failed (broadcast still works):", e.message);
       });
 
-    return () => {
-      active = false;
-      doStop(false);
-    };
+    return () => { active = false; };
   }, [roomId]);
 
   useBlocker(({ currentLocation, nextLocation }) =>
