@@ -15,14 +15,11 @@ const BroadcastHost = () => {
 
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activePreset, setActivePreset] = useState<Preset | null>(null);
-  const [audioFileName, setAudioFileName] = useState("");
-  const [audioUploading, setAudioUploading] = useState(false);
-  const [audioUploadError, setAudioUploadError] = useState<string | null>(null);
-  const [audioReady, setAudioReady] = useState(false);
-  const [localAudioUrl, setLocalAudioUrl] = useState<string | undefined>(undefined);
   const [isPlaying, setIsPlaying] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [roomError, setRoomError] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState("");
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const engineRef = useRef<MAGEEngineAPI | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -30,40 +27,38 @@ const BroadcastHost = () => {
   const publicAudioUrlRef = useRef<string | null>(null);
   const activePresetRef = useRef<Preset | null>(null);
   const isPlayingRef = useRef(false);
-  const audioUploadingRef = useRef(false);
   const syncIntervalRef = useRef<number | null>(null);
-  const sessionRef = useRef(session);
 
-  useEffect(() => { sessionRef.current = session; }, [session]);
   useEffect(() => { activePresetRef.current = activePreset; }, [activePreset]);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => () => { if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current); }, []);
 
   const pushState = (overrides: Partial<{ playing: boolean; playbackTime: number }> = {}) => {
     if (!roomId) return;
-    // Don't publish during upload — viewers would get a stale null audioUrl
-    if (audioUploadingRef.current) return;
     const state = {
       presetData: activePresetRef.current?.scene_data ?? null,
       audioUrl: publicAudioUrlRef.current,
       playing: overrides.playing ?? isPlayingRef.current,
       playbackTime: overrides.playbackTime ?? engineRef.current?.getAudioTime() ?? 0,
     };
-    console.log("[Host] pushState →", { hasPreset: !!state.presetData, audioUrl: state.audioUrl, playing: state.playing, playbackTime: state.playbackTime });
+    console.log("[Host] push", { hasPreset: !!state.presetData, audioUrl: state.audioUrl, playing: state.playing });
     publishState(roomId, state);
   };
 
-  // Load user presets — re-run when session arrives (auth loads async)
+  // Load presets — re-run when session arrives (auth loads async)
   useEffect(() => {
     if (!supabase || !session?.user) return;
     supabase
       .from("preset")
       .select("id, name, scene_data, thumbnail_url")
       .eq("user_id", session.user.id)
-      .then(({ data, error }: any) => { if (!error && data) setPresets(data); });
+      .then(({ data, error }: any) => {
+        if (error) console.error("[Host] presets load error:", error.message);
+        if (!error && data) setPresets(data);
+      });
   }, [session]);
 
-  // Start Ably publishing immediately — don't wait for DB
+  // Start broadcasting immediately on mount
   useEffect(() => {
     if (!roomId) return;
     setInitialized(true);
@@ -71,22 +66,14 @@ const BroadcastHost = () => {
     return () => { if (syncIntervalRef.current) window.clearInterval(syncIntervalRef.current); };
   }, [roomId]);
 
-  // DB upsert is only for the room list — runs independently, doesn't gate broadcast
+  // DB upsert for room list — non-blocking
   useEffect(() => {
-    if (!supabase || !sessionRef.current?.user || !roomId) return;
-    let active = true;
-
-    const title = `${sessionRef.current.user.email?.split("@")[0]}'s room`;
-    supabase
-      .from("broadcast_room")
-      .upsert({ id: roomId, host_user_id: sessionRef.current.user.id, title, is_active: true }, { onConflict: "id" })
-      .then(({ error: e }: any) => {
-        if (!active) return;
-        if (e) console.warn("[Host] DB upsert failed (broadcast still works):", e.message);
-      });
-
-    return () => { active = false; };
-  }, [roomId]);
+    if (!supabase || !session?.user || !roomId) return;
+    const title = `${session.user.email?.split("@")[0]}'s room`;
+    supabase.from("broadcast_room")
+      .upsert({ id: roomId, host_user_id: session.user.id, title, is_active: true }, { onConflict: "id" })
+      .then(({ error: e }: any) => { if (e) console.warn("[Host] DB upsert failed:", e.message); });
+  }, [roomId, session]);
 
   useBlocker(({ currentLocation, nextLocation }) =>
     initialized &&
@@ -114,39 +101,49 @@ const BroadcastHost = () => {
     pushState();
   };
 
-  const handleAudioFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // File upload → Supabase Storage → public URL
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !supabase || !roomId) return;
+    if (!file) return;
 
-    console.log("[Host] audio file selected:", file.name, "size:", file.size);
-
+    // Always load locally for host playback
     if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
     const blob = URL.createObjectURL(file);
     blobUrlRef.current = blob;
-    setAudioFileName(file.name);
-    setLocalAudioUrl(blob);
 
-    audioUploadingRef.current = true;
-    setAudioUploading(true);
-    const path = `${roomId}/${Date.now()}-${file.name}`;
-    console.log("[Host] uploading to path:", path);
-    const { data, error } = await supabase.storage.from("broadcast-audio").upload(path, file, { upsert: true });
-    audioUploadingRef.current = false;
-    setAudioUploading(false);
-    if (error || !data) {
-      console.error("[Host] upload FAILED:", error?.message, error);
-      setAudioUploadError(error?.message ?? "Upload failed");
-      setAudioReady(false);
+    if (!supabase || !roomId) {
+      // No Supabase — can only play locally, can't share
+      setUploadError("Storage not configured. Paste a public URL instead.");
       return;
     }
 
-    console.log("[Host] upload SUCCESS, data.path:", data.path);
+    setAudioUploading(true);
+    setUploadError(null);
+    const path = `${roomId}/${Date.now()}-${file.name}`;
+    console.log("[Host] uploading:", path);
+    const { data, error } = await supabase.storage.from("broadcast-audio").upload(path, file, { upsert: true });
+    setAudioUploading(false);
+
+    if (error || !data) {
+      console.error("[Host] upload failed:", error?.message);
+      setUploadError(`Upload failed: ${error?.message ?? "unknown error"}. Paste a public URL instead.`);
+      return;
+    }
+
     const { data: urlData } = supabase.storage.from("broadcast-audio").getPublicUrl(data.path);
-    publicAudioUrlRef.current = urlData.publicUrl;
-    console.log("[Host] public URL set →", urlData.publicUrl);
-    setAudioUploadError(null);
-    setAudioReady(true);
-    pushState(); // now safe — upload done, URL is set
+    const url = urlData.publicUrl;
+    console.log("[Host] upload success, public URL:", url);
+    publicAudioUrlRef.current = url;
+    setAudioUrl(url);
+    pushState();
+  };
+
+  // Direct URL paste — instant, no upload needed
+  const handleUrlInput = (url: string) => {
+    setAudioUrl(url);
+    publicAudioUrlRef.current = url || null;
+    setUploadError(null);
+    pushState();
   };
 
   const handlePlay = () => {
@@ -177,13 +174,11 @@ const BroadcastHost = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [initialized, isPlaying]);
 
-  const shareUrl = `${window.location.origin}/broadcast/room/${roomId}`;
+  // Local audio source for host engine: prefer blob (file upload) else the pasted URL
+  const localAudioSource = blobUrlRef.current ?? (audioUrl || undefined);
 
-  if (roomError) return (
-    <div className="mage-page">
-      <p className="mage-body" style={{ color: "#e74c3c" }}>Could not start room: {roomError}</p>
-    </div>
-  );
+  const shareUrl = `${window.location.origin}/broadcast/room/${roomId}`;
+  const audioReady = !!publicAudioUrlRef.current;
 
   return (
     <div className="mage-page">
@@ -200,7 +195,7 @@ const BroadcastHost = () => {
             <div>
               <EnginePlayer
                 preset={activePreset?.scene_data ?? null}
-                audioSource={localAudioUrl}
+                audioSource={localAudioSource}
                 onEngineReady={(e) => { engineRef.current = e; }}
                 displayControls={false}
                 readOnly
@@ -213,29 +208,58 @@ const BroadcastHost = () => {
                   }
                 </button>
                 <span style={{ fontSize: "11px", color: audioReady ? "var(--mage-cream-40)" : "#e05c4a", marginLeft: "6px" }}>
-                  {audioReady ? "Space to toggle" : "Upload audio to enable playback"}
+                  {audioReady ? "Space to toggle" : "Add audio to share with viewers"}
                 </span>
               </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {/* Audio section */}
               <div>
                 <p className="mage-body" style={{ fontSize: "12px", marginBottom: "6px" }}>Audio</p>
-                <input ref={fileInputRef} type="file" accept="audio/*" style={{ display: "none" }} onChange={handleAudioFileChange} />
-                <button type="button" className="mage-audio-picker" style={{ width: "100%", borderColor: audioUploadError ? "#e05c4a" : audioReady ? "#2ecc71" : undefined }} onClick={() => fileInputRef.current?.click()} disabled={audioUploading}>
+
+                {/* File upload */}
+                <input ref={fileInputRef} type="file" accept="audio/*" style={{ display: "none" }} onChange={handleFileUpload} />
+                <button
+                  type="button"
+                  className="mage-audio-picker"
+                  style={{ width: "100%", marginBottom: "6px", borderColor: audioReady ? "#2ecc71" : undefined }}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={audioUploading}
+                >
                   <span className="mage-audio-picker__label">
-                    {audioUploading ? "Uploading…" : audioReady ? "✓ Audio Ready" : "↑ Upload Audio"}
+                    {audioUploading ? "Uploading…" : audioReady && blobUrlRef.current ? "✓ File uploaded" : "↑ Upload audio file"}
                   </span>
-                  {audioUploadError && <span className="mage-audio-picker__name" style={{ color: "#e05c4a" }}>Error: {audioUploadError}</span>}
-                  {!audioUploadError && audioFileName && <span className="mage-audio-picker__name">{audioUploading ? "Sharing with viewers…" : audioFileName}</span>}
                 </button>
+
+                {/* URL paste — always works */}
+                <input
+                  type="url"
+                  placeholder="Or paste a public audio URL"
+                  value={audioUrl}
+                  onChange={(e) => handleUrlInput(e.target.value)}
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    background: "var(--mage-cream-05)", border: "1px solid var(--mage-cream-10)",
+                    borderRadius: "4px", padding: "6px 8px", fontSize: "11px",
+                    color: "var(--mage-cream)", outline: "none",
+                  }}
+                />
+
+                {uploadError && (
+                  <p style={{ fontSize: "11px", color: "#e05c4a", marginTop: "4px" }}>{uploadError}</p>
+                )}
+                {audioReady && (
+                  <p style={{ fontSize: "11px", color: "#2ecc71", marginTop: "4px" }}>✓ Audio ready — viewers will hear this</p>
+                )}
               </div>
 
+              {/* Preset list */}
               <div>
                 <p className="mage-body" style={{ fontSize: "12px", marginBottom: "6px" }}>Your Presets</p>
                 {presets.length === 0
                   ? <p style={{ fontSize: "12px", color: "var(--mage-muted, #888)" }}>No presets yet</p>
-                  : <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "320px", overflowY: "auto" }}>
+                  : <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "300px", overflowY: "auto" }}>
                       {presets.map((p) => (
                         <button key={p.id} type="button" className="mage-btn" onClick={() => handlePresetSelect(p)}
                           style={{ textAlign: "left", background: activePreset?.id === p.id ? "var(--mage-accent, #6c63ff)" : undefined }}>
@@ -261,7 +285,7 @@ const BroadcastHost = () => {
         </>
       )}
 
-      {!initialized && !roomError && <p className="mage-body">Setting up room…</p>}
+      {!initialized && <p className="mage-body">Setting up room…</p>}
     </div>
   );
 };
