@@ -18,6 +18,7 @@ const BroadcastViewer = () => {
   const [currentAudio, setCurrentAudio] = useState<string | null>(null);
   const [hostPlaying, setHostPlaying] = useState(false);
   const [hostName, setHostName] = useState<string | null>(null);
+  const [audioReady, setAudioReady] = useState(false);
 
   const engineRef = useRef<MAGEEngineAPI | null>(null);
   const shouldPlayRef = useRef(false);
@@ -98,6 +99,7 @@ const BroadcastViewer = () => {
     if (state.audioUrl && state.audioUrl !== lastAudioUrlRef.current) {
       lastAudioUrlRef.current = state.audioUrl;
       setCurrentAudio(state.audioUrl);
+      setAudioReady(false); // reset while new audio loads
       if (shouldPlayRef.current) startPlay();
     }
 
@@ -166,14 +168,16 @@ const BroadcastViewer = () => {
         preset={currentPreset ?? undefined}
         audioSource={currentAudio ?? undefined}
         onEngineReady={onEngineReady}
+        onAudioLoaded={() => setAudioReady(true)}
         readOnly
       />
 
       <div style={{ marginTop: "12px", fontSize: "12px", color: "var(--mage-cream-60)", display: "flex", flexDirection: "column", gap: "4px" }}>
-        {!currentPreset && <span>⏳ Waiting for host to load a preset…</span>}
-        {currentPreset && !currentAudio && hostPlaying && <span>⏳ Waiting for host to share audio…</span>}
-        {currentPreset && !hostPlaying && <span>⏸ Host is paused</span>}
-        {currentPreset && currentAudio && hostPlaying && <span>▶ Syncing audio…</span>}
+        {!currentPreset && <span>⏳ Waiting for host to select a preset…</span>}
+        {currentPreset && !currentAudio && <span>⏳ Waiting for host to add audio…</span>}
+        {currentPreset && currentAudio && !audioReady && <span>⏳ Downloading audio — this may take a moment…</span>}
+        {currentPreset && currentAudio && audioReady && !hostPlaying && <span>⏸ Host is paused</span>}
+        {currentPreset && currentAudio && audioReady && hostPlaying && <span>▶ Live</span>}
       </div>
     </div>
   );

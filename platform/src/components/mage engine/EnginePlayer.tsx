@@ -8,10 +8,11 @@ type EnginePlayerProps = {
   displayControls?: boolean;
   audioSource?: string;
   onEngineReady?: (engine: MAGEEngineAPI) => void;
+  onAudioLoaded?: () => void;
   readOnly?: boolean;
 };
 
-const EnginePlayer = ({ displayControls = false, preset, audioSource, onEngineReady, readOnly = false }: EnginePlayerProps) => {
+const EnginePlayer = ({ displayControls = false, preset, audioSource, onEngineReady, onAudioLoaded, readOnly = false }: EnginePlayerProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [engine, setEngine] = useState<MAGEEngineAPI | null>(null);
   const [audioLoaded, setAudioLoaded] = useState(false);
@@ -56,6 +57,7 @@ const EnginePlayer = ({ displayControls = false, preset, audioSource, onEngineRe
     const intervalId = window.setInterval(() => {
       if (engine.isAudioLoaded()) {
         setAudioLoaded(true);
+        onAudioLoaded?.();
         window.clearInterval(intervalId);
       }
     }, 100);
