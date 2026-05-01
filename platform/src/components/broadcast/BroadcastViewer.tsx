@@ -21,7 +21,8 @@ const BroadcastViewer = () => {
 
   const engineRef = useRef<MAGEEngineAPI | null>(null);
   const shouldPlayRef = useRef(false);
-  const targetTimeRef = useRef(0);
+  // Store raw host clock so we can recompute fresh at any moment
+  const hostClockRef = useRef<{ playbackTime: number; sentAt: number } | null>(null);
   const retryRef = useRef<number | null>(null);
   const lastPresetJsonRef = useRef<string | null>(null);
   const lastAudioUrlRef = useRef<string | null>(null);
@@ -50,22 +51,21 @@ const BroadcastViewer = () => {
     if (retryRef.current) { window.clearInterval(retryRef.current); retryRef.current = null; }
   };
 
-  const startPlay = useCallback((time: number) => {
-    console.log("[Viewer] startPlay time=", time);
+  const startPlay = useCallback(() => {
     shouldPlayRef.current = true;
-    targetTimeRef.current = time;
-    const startedAt = Date.now();
     clearRetry();
     retryRef.current = window.setInterval(() => {
       const eng = engineRef.current;
       if (!eng || !eng.isAudioLoaded()) return;
-      // Add time spent waiting for audio to load so we land exactly in sync
-      const loadDelay = (Date.now() - startedAt) / 1000;
-      const seekTo = targetTimeRef.current + loadDelay;
+      // Recompute the exact host position right now using the freshest clock data
+      const clock = hostClockRef.current;
+      const seekTo = clock
+        ? clock.playbackTime + (Date.now() - clock.sentAt) / 1000
+        : 0;
       eng.seek(seekTo);
       eng.play();
       clearRetry();
-      console.log("[Viewer] ▶ playing at", seekTo, "(load delay:", loadDelay.toFixed(2), "s)");
+      console.log("[Viewer] ▶ playing at", seekTo.toFixed(2));
     }, 100);
   }, []);
 
@@ -98,35 +98,37 @@ const BroadcastViewer = () => {
     if (state.audioUrl && state.audioUrl !== lastAudioUrlRef.current) {
       lastAudioUrlRef.current = state.audioUrl;
       setCurrentAudio(state.audioUrl);
-      if (shouldPlayRef.current) startPlay(targetTimeRef.current);
+      if (shouldPlayRef.current) startPlay();
     }
 
     setHostPlaying(state.playing);
 
     if (state.playing) {
-      // Compensate for time elapsed since host sent this message
-      const elapsed = state.sentAt ? (Date.now() - state.sentAt) / 1000 : 0;
-      const adjustedTime = state.playbackTime + elapsed;
+      // Always keep the freshest host clock — used by retry loop and drift correction
+      hostClockRef.current = { playbackTime: state.playbackTime, sentAt: state.sentAt ?? Date.now() };
 
       if (!shouldPlayRef.current) {
-        startPlay(adjustedTime);
+        startPlay();
       } else {
         const eng = engineRef.current;
         if (eng?.isAudioLoaded()) {
-          const drift = Math.abs(eng.getAudioTime() - adjustedTime);
-          if (drift > LARGE_DRIFT) eng.seek(adjustedTime);
-        } else {
-          targetTimeRef.current = adjustedTime;
+          const currentHostTime = state.playbackTime + (state.sentAt ? (Date.now() - state.sentAt) / 1000 : 0);
+          const drift = Math.abs(eng.getAudioTime() - currentHostTime);
+          if (drift > LARGE_DRIFT) {
+            console.log("[Viewer] correcting drift", drift.toFixed(2), "→", currentHostTime.toFixed(2));
+            eng.seek(currentHostTime);
+          }
         }
       }
     } else {
+      hostClockRef.current = null;
       tryPause();
     }
   }, [startPlay, tryPause]);
 
   const onEngineReady = useCallback((eng: MAGEEngineAPI) => {
     engineRef.current = eng;
-    if (shouldPlayRef.current) startPlay(targetTimeRef.current);
+    if (shouldPlayRef.current) startPlay();
   }, [startPlay]);
 
   useEffect(() => {

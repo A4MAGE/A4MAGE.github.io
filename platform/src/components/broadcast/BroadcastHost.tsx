@@ -28,21 +28,30 @@ const BroadcastHost = () => {
   const activePresetRef = useRef<Preset | null>(null);
   const isPlayingRef = useRef(false);
   const syncIntervalRef = useRef<number | null>(null);
+  // JS-level playback clock — more reliable than engine.getAudioTime()
+  const playStartedAtRef = useRef<number | null>(null);
+  const playOffsetRef = useRef<number>(0);
 
   useEffect(() => { activePresetRef.current = activePreset; }, [activePreset]);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => () => { if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current); }, []);
 
+  const getPlaybackTime = () => {
+    if (!isPlayingRef.current || playStartedAtRef.current === null) return playOffsetRef.current;
+    return playOffsetRef.current + (Date.now() - playStartedAtRef.current) / 1000;
+  };
+
   const pushState = (overrides: Partial<{ playing: boolean; playbackTime: number }> = {}) => {
     if (!roomId) return;
+    const playbackTime = overrides.playbackTime ?? getPlaybackTime();
     const state = {
       presetData: activePresetRef.current?.scene_data ?? null,
       audioUrl: publicAudioUrlRef.current,
       playing: overrides.playing ?? isPlayingRef.current,
-      playbackTime: overrides.playbackTime ?? engineRef.current?.getAudioTime() ?? 0,
+      playbackTime,
       sentAt: Date.now(),
     };
-    console.log("[Host] push", { hasPreset: !!state.presetData, audioUrl: state.audioUrl, playing: state.playing });
+    console.log("[Host] push", { hasPreset: !!state.presetData, audioUrl: state.audioUrl, playing: state.playing, t: playbackTime.toFixed(2) });
     publishState(roomId, state);
   };
 
@@ -159,14 +168,18 @@ const BroadcastHost = () => {
     engineRef.current?.play();
     setIsPlaying(true);
     isPlayingRef.current = true;
-    pushState({ playing: true, playbackTime: engineRef.current?.getAudioTime() ?? 0 });
+    playStartedAtRef.current = Date.now();
+    pushState({ playing: true, playbackTime: playOffsetRef.current });
   };
 
   const handlePause = () => {
     engineRef.current?.pause();
     setIsPlaying(false);
     isPlayingRef.current = false;
-    pushState({ playing: false, playbackTime: engineRef.current?.getAudioTime() ?? 0 });
+    // Freeze the offset at current position so resume starts from here
+    playOffsetRef.current = getPlaybackTime();
+    playStartedAtRef.current = null;
+    pushState({ playing: false, playbackTime: playOffsetRef.current });
   };
 
   const togglePlayPause = () => isPlaying ? handlePause() : handlePlay();
