@@ -31,7 +31,7 @@ const BroadcastViewer = () => {
   // Redirect to sign in if not logged in (preserve return URL)
   useEffect(() => {
     if (session === null) {
-      navigate(`/signin?redirect=/broadcast/room/${roomId}`);
+      navigate(`/signin?next=/broadcast/room/${roomId}`);
     }
   }, [session, roomId, navigate]);
 
