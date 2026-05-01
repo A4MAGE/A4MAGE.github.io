@@ -38,7 +38,15 @@ function Engine() {
       playStartRef.current = Date.now()
       timerRef.current = window.setInterval(() => {
         const sinceStart = (Date.now() - (playStartRef.current ?? Date.now())) / 1000
-        setElapsed(Math.min(accumulatedRef.current + sinceStart, duration || Infinity))
+        const next = accumulatedRef.current + sinceStart
+        if (duration > 0 && next >= duration) {
+          setElapsed(duration)
+          accumulatedRef.current = duration
+          playStartRef.current = null
+          setIsPlaying(false)
+        } else {
+          setElapsed(next)
+        }
       }, 250)
     } else {
       if (timerRef.current) window.clearInterval(timerRef.current)
@@ -66,7 +74,14 @@ function Engine() {
     setAudioSource(url)
   }
 
-  const handlePlay = () => { engineRef.current?.play(); setIsPlaying(true) }
+  const handlePlay = () => {
+    if (duration > 0 && accumulatedRef.current >= duration - 0.5) {
+      accumulatedRef.current = 0
+      setElapsed(0)
+    }
+    engineRef.current?.play()
+    setIsPlaying(true)
+  }
   const handlePause = () => { engineRef.current?.pause(); setIsPlaying(false) }
   const progress = duration > 0 ? Math.min(elapsed / duration, 1) : 0
 
