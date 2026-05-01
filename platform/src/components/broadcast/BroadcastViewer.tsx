@@ -137,9 +137,6 @@ const BroadcastViewer = () => {
     return () => { unsub(); clearRetry(); };
   }, [roomId, applyState]);
 
-  // Still checking auth
-  if (session === undefined) return null;
-
   if (ended) return (
     <div className="mage-page">
       <header className="mage-page__header">
