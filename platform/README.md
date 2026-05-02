@@ -1,53 +1,84 @@
-# Authentication & Engine - Jason Courtois
+# Platform App
 
-Implemented a login demo using authentication with supabase using Supabase Javascript SDK
+This folder contains the main MAGE platform app. It combines authentication, preset browsing, preset creation, profile management, and live broadcast rooms on top of the MAGE engine and Supabase.
 
-Notes for production/development:
-- For errors within AuthContext - do not leave data within console log, this is just for development purposes.
-- Avoid using React Compiler! I had several issues with the order at which page reloads were called due to the compilers attempts at optimization. After disabling the react compiler these issues went away.
-- Several errors are generated when calling engine.dispose(); with the MAGE engine. Brandon has been made aware of this issue and was working on a patch.
+The engine itself comes from the external `@notrac/mage` package. This repo uses it, but does not maintain the library.
 
-## Summary of how this code works
-- supabaseClient.ts: establishes a connection to supabase via API keys that are safe to have on frontend applications. [Supabase API Key Docs](https://supabase.com/docs/guides/api/api-keys)
+## What You Can Do
 
-- AuthContext.tsx: Most important piece of code here, stores current login info on users browser so each page can display user content. [Supabase React Docs](https://supabase.com/docs/guides/auth/quickstarts/react) 
+- Sign up and sign in with Supabase auth.
+- Browse community presets or load the built-in base presets.
+- Open the engine player and pair a preset with audio.
+- Create and save your own presets.
+- Edit your profile, avatar, and bio.
+- Start or join a live broadcast room.
+- Use the homepage app through the catch-all route inside the same workspace.
 
-- App.tsx/Signin.tsx/Signup.tsx/Dashboard.tsx are all basic/incomplete pages to show the functionality of the auth system using the React Router to switch between pages.
+## Getting Started
 
-- EnginePlayer.tsx - Loads the MAGE engine with the selected preset and CSS properties like width and height.
+From the `platform` folder:
 
-- Dashboard.tsx - Manages preset and audio state to be controlled with the MAGE engine and audio controller respectively.
+```bash
+npm install
+npm run dev
+```
 
-### AuthContext.tsx
-- This context provider keeps track of the users current login session information.
-- The context provided is wrapped around this whole application, so in our final react app this would surround the whole site.
-- Establishes a connection to our MAGE supabase instance using the public safe API keys
-- There is also some gross looking typescript boilerplate for type definitions at the top
-- Within AuthContext is 3 important main functions
-  - signUpNewUser
-  - signIn
-  - signout
-- These functions are all effectively wrappers for supabase SDK functions.
-- There is also a critically important useEffect which keeps the session updated in the user's browser.
-  - This useEffects sets up a callback function so that way if user signs in/out, it gets updated across the whole site.
+Other available scripts:
 
-### supabaseClient.ts
-- uses env variables stored in .env.local in order to establish a connection to supabase
-- These keys should not be pasted into .env directly, because we don't want them on github.
-- Instead, they should be placed in a new file called .env.local that has the same template as .env
+- `npm run build` builds the production bundle.
+- `npm run lint` runs ESLint.
+- `npm run preview` previews the production build locally.
 
-### PrivateRoute.tsx
-- Wrapper component that protects pages from users who aren't logged in
-- Checks to see if session is set to null, if it is, then it navigates back to websites home page
+## App Structure
 
-### Signin.tsx/Signup.tsx
-- Both pages are all basic .tsx pages that have signin/signup functionality
-- These pages all interact with AuthContext in order to get/modify the current user login state.
+The router is defined in `src/router.tsx` and splits the app into three groups:
 
-### Dashboard.tsx
-- Manages the state of EnginePlayer and audio controller.
-- This will allow the user to easily select audio tracks and different presets.
+| Area | Routes | Purpose |
+| --- | --- | --- |
+| Public auth | `/signin`, `/signup`, `/login` | Account access and redirects |
+| Public broadcast viewer | `/broadcast/room/:roomId` | Join a live room as a viewer |
+| Authenticated app | `/profile`, `/explore`, `/player`, `/my-presets`, `/create`, `/broadcast`, `/broadcast/host/:roomId` | Main platform experience behind auth |
+| Homepage fallback | `/*` | Loads the homepage app from the sibling `homepage` folder |
 
-### EnginePlayer.tsx
-- This component integrates the engine into a canvas which can be loaded on our engine player page.
-- Right now it just loads one audio file, and pulls presets from the public folder in the repo.
+The authenticated section is wrapped by `PrivateRoute`, so users without a session are sent back to the public flow.
+
+## Main Screens
+
+`/signin` and `/signup` handle the Supabase login flow. The signup screen shows a success state before sending the user back to sign in.
+
+`/profile` lets the user update their display name, bio, and avatar, and shows recent presets for quick reuse.
+
+`/explore` is the community preset browser. Selecting a preset sends it to the player.
+
+`/player` is the visualizer and preset launcher. It can load community presets, built-in base presets, or uploaded audio, and it can save the current engine state back into Supabase.
+
+`/my-presets` lists the user’s saved presets and supports edit, rename, and delete actions.
+
+`/create` is the preset authoring view. It loads the engine with controls enabled and moves the engine’s editing docks into the page layout for easier editing.
+
+`/broadcast` starts or lists live rooms. The host flow lives at `/broadcast/host/:roomId`, while viewers join through `/broadcast/room/:roomId`.
+
+## Data And Dependencies
+
+- `src/supabaseClient.ts` creates the Supabase client from the Vite env values.
+- `src/context/AuthContext.tsx` keeps the browser session in sync across the app.
+- `vite.config.ts` aliases the sibling `homepage`, `audio`, and `search` folders so the platform app can reuse shared workspace code.
+
+The app also depends on Supabase storage for avatars and preset thumbnails, plus the `preset` and `profile` tables and the `preset_with_username` view/query source used by the UI.
+
+## Notes For Maintainers
+
+- Avoid enabling React Compiler here. It caused page reload and ordering issues in this app.
+- Keep noisy debug logging out of auth code unless it is strictly temporary.
+- The MAGE engine can emit errors during `engine.dispose()`. That behavior is known in the external library.
+- The production build uses Vite/Terser settings in `vite.config.ts` to keep the engine runtime stable.
+
+## Quick Mental Model
+
+If you are trying to understand the app quickly, start with these files:
+
+- `src/router.tsx` for the route map.
+- `src/context/AuthContext.tsx` for login state.
+- `src/components/Player.tsx` for the main engine and preset workflow.
+- `src/components/Profile.tsx` for account management.
+- `src/components/broadcast/BroadcastHost.tsx` and `src/components/broadcast/BroadcastViewer.tsx` for live rooms.
