@@ -88,28 +88,32 @@ const BroadcastViewer = () => {
 
     if (state.ended) { setEnded(true); return; }
 
+    let presetChanged = false;
     if (state.presetData) {
       const json = JSON.stringify(state.presetData);
       if (json !== lastPresetJsonRef.current) {
         lastPresetJsonRef.current = json;
         setCurrentPreset(state.presetData);
+        presetChanged = true;
       }
     }
 
+    let audioChanged = false;
     if (state.audioUrl && state.audioUrl !== lastAudioUrlRef.current) {
       lastAudioUrlRef.current = state.audioUrl;
       setCurrentAudio(state.audioUrl);
       setAudioReady(false); // reset while new audio loads
-      if (shouldPlayRef.current) startPlay();
+      audioChanged = true;
     }
 
     setHostPlaying(state.playing);
 
     if (state.playing) {
-      // Always keep the freshest host clock — used by retry loop and drift correction
+      // Update clock FIRST so startPlay()'s retry loop always seeks to the right position
       hostClockRef.current = { playbackTime: state.playbackTime, sentAt: state.sentAt ?? Date.now() };
 
-      if (!shouldPlayRef.current) {
+      if (!shouldPlayRef.current || presetChanged || audioChanged) {
+        // Start playback, or re-sync after preset/audio change (engine may have reset position)
         startPlay();
       } else {
         const eng = engineRef.current;
